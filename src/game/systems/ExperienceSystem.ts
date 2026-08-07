@@ -1,0 +1,3 @@
+import { GAME_CONFIG } from '../config/gameConfig'; import type { PlayerState } from '../core/types'; import { maxHealth } from './StatsSystem';
+export const requiredXP = (level: number) => level * GAME_CONFIG.experience.multiplierPerLevel;
+export const addExperience = (p: PlayerState, amount: number) => { if (p.level >= GAME_CONFIG.player.maxLevel) return 0;const previousLevel=p.level;p.xp += amount; while (p.level < GAME_CONFIG.player.maxLevel && p.xp >= requiredXP(p.level)) { p.xp -= requiredXP(p.level); p.level++; p.availableStatPoints += GAME_CONFIG.player.statPointsPerLevel; } if (p.level >= GAME_CONFIG.player.maxLevel) p.xp = 0;const levelsGained=p.level-previousLevel;if(levelsGained>0)p.currentHealth=maxHealth(p.stats.vitality,p.level);return levelsGained; };
