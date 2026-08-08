@@ -31,6 +31,8 @@ import { GameCamera } from "../camera/GameCamera";
 import { InputSystem } from "../systems/InputSystem";
 import { CombatSystem } from "../systems/CombatSystem";
 import { CoinPickupSystem } from "../systems/CoinPickupSystem";
+import { MeatPickupSystem } from "../systems/MeatPickupSystem";
+import { eatRawSteak } from "../systems/HungerSystem";
 import {
   purchaseHealthPotion,
   useHealthPotion,
@@ -105,6 +107,7 @@ export class WorldScene {
   private fpsTick = 0;
   private population: MonsterPopulationSystem;
   private coinPickups: CoinPickupSystem;
+  private meatPickups: MeatPickupSystem;
   private baseRaid: BaseRaidSystem;
   private coreMaterial: StandardMaterial;
   private playerLight?: PointLight;
@@ -122,6 +125,10 @@ export class WorldScene {
   private bossWarning: HTMLElement;
   private autoplayTowerUpgrades = new AutoplayTowerUpgradeSystem();
   private autoplayEnabled = false;
+  private autoplayLastPosition?: { x: number; z: number };
+  private autoplayStuckMs = 0;
+  private autoplayRecoveryMs = 0;
+  private autoplayRecoveryDirection = { x: 0, z: 0 };
   private darkness = new DarknessCycleSystem();
   private ground: Mesh;
   private defenses: DefenseManager;
@@ -303,10 +310,23 @@ export class WorldScene {
       }),
       (amount) => this.hud.toast(`+${amount} coins`),
     );
+    this.meatPickups = new MeatPickupSystem(
+      this.scene,
+      this.player.state,
+      () => ({
+        x: this.player.root.position.x,
+        z: this.player.root.position.z,
+      }),
+      (amount) => this.hud.toast(`🥩 +${amount} Raw Beef`),
+    );
     const handleMonsterKilled = (monster: Monster) => {
       if (monster.state.type !== "bear")
         this.population.onMonsterKilled(monster.state.type);
       this.coinPickups.tryDrop(monster.state.type, {
+        x: monster.root.position.x,
+        z: monster.root.position.z,
+      });
+      this.meatPickups.tryDrop(monster.state.type, {
         x: monster.root.position.x,
         z: monster.root.position.z,
       });
@@ -399,11 +419,13 @@ export class WorldScene {
   update(dt: number) {
     const potionRequested = this.input.consumePotionRequest(),
       lanternToggleRequested = this.input.consumeLanternToggleRequest(),
-      lanternRefillRequested = this.input.consumeLanternRefillRequest();
+      lanternRefillRequested = this.input.consumeLanternRefillRequest(),
+      steakRequested = this.input.consumeSteakRequest();
     if (!this.paused) {
       if (potionRequested) this.useHealthPotion();
       if (lanternToggleRequested) this.toggleLantern();
       if (lanternRefillRequested) this.refillLantern();
+      if (steakRequested) this.eatRawSteak();
       if (drainLantern(this.player.state, dt))
         this.hud.toast("Lantern ran out of gas");
       const darknessTransition = this.darkness.update(dt * 1000);
@@ -417,7 +439,7 @@ export class WorldScene {
       const direction = this.placement.active
         ? { x: 0, z: 0 }
         : this.autoplayEnabled
-          ? this.autoplayDirection()
+          ? this.autoplayDirection(dt)
           : this.input.direction();
       this.player.update(direction, dt, (x, z) => this.blocked(x, z));
       this.combat.update(dt);
@@ -460,6 +482,7 @@ export class WorldScene {
       this.defenses.update(dt, this.monsters, !this.darkness.isDark);
       this.population.update(dt * 1000);
       this.coinPickups.update(dt);
+      this.meatPickups.update(dt);
       this.updateArrowShots(dt);
     }
     this.monsters.forEach((monster) => monster.animateDeath(dt));
@@ -471,6 +494,9 @@ export class WorldScene {
   setAutoplay(enabled: boolean) {
     this.autoplayEnabled = enabled;
     if (!enabled) this.navigation.clear("autoplay-player");
+    this.autoplayLastPosition = undefined;
+    this.autoplayStuckMs = 0;
+    this.autoplayRecoveryMs = 0;
     this.hud.toast(`Autoplay ${enabled ? "enabled" : "disabled"}`);
   }
   addCheatCoins(amount: number) {
@@ -478,7 +504,7 @@ export class WorldScene {
     this.player.state.coins += amount;
     this.hud.toast(`Cheat activated: +${amount.toLocaleString()} Coins`);
   }
-  private autoplayDirection() {
+  private autoplayDirection(dt: number) {
     const position = {
         x: this.player.root.position.x,
         z: this.player.root.position.z,
@@ -486,15 +512,16 @@ export class WorldScene {
       visibleMonsters = this.monsters.filter(
         (monster) => monster.isTargetable && this.canPlayerSee(monster),
       ),
-      visibleCoins = this.coinPickups
-        .positions()
-        .filter(
-          (coin) =>
-            !this.darkness.isDark ||
-            (this.player.state.lanternOn &&
-              Math.hypot(coin.x - position.x, coin.z - position.z) <=
-                HORROR_THEME_CONFIG.playerLight.radius),
-        ),
+      visiblePickups = [
+        ...this.coinPickups.positions(),
+        ...this.meatPickups.positions(),
+      ].filter(
+        (coin) =>
+          !this.darkness.isDark ||
+          (this.player.state.lanternOn &&
+            Math.hypot(coin.x - position.x, coin.z - position.z) <=
+              HORROR_THEME_CONFIG.playerLight.radius),
+      ),
       context = this.autoplayContext(),
       decision = this.autoplay.decide(
         this.player.state,
@@ -506,7 +533,7 @@ export class WorldScene {
           health: monster.state.health,
           position: { x: monster.root.position.x, z: monster.root.position.z },
         })),
-        visibleCoins,
+        visiblePickups,
         context,
       );
     if (decision.mode === "attack" && decision.monsterId) {
@@ -519,9 +546,10 @@ export class WorldScene {
         this.player.state.powerType === "archer"
       )
         this.showArrowShot(target);
-      return { x: 0, z: 0 };
+      return this.resolveAutoplayMovement({ x: 0, z: 0 }, dt);
     }
-    if (!decision.destination) return { x: 0, z: 0 };
+    if (!decision.destination)
+      return this.resolveAutoplayMovement({ x: 0, z: 0 }, dt);
     const waypoint =
         this.navigation.getNextWaypoint(
           "autoplay-player",
@@ -531,7 +559,60 @@ export class WorldScene {
       dx = waypoint.x - position.x,
       dz = waypoint.z - position.z,
       length = Math.hypot(dx, dz);
-    return length > 0.08 ? { x: dx / length, z: dz / length } : { x: 0, z: 0 };
+    return this.resolveAutoplayMovement(
+      length > 0.08 ? { x: dx / length, z: dz / length } : { x: 0, z: 0 },
+      dt,
+    );
+  }
+  private resolveAutoplayMovement(
+    direction: { x: number; z: number },
+    dt: number,
+  ) {
+    const position = {
+        x: this.player.root.position.x,
+        z: this.player.root.position.z,
+      },
+      moving = Math.hypot(direction.x, direction.z) > 0.05,
+      displacement = this.autoplayLastPosition
+        ? Math.hypot(
+            position.x - this.autoplayLastPosition.x,
+            position.z - this.autoplayLastPosition.z,
+          )
+        : Number.POSITIVE_INFINITY;
+    this.autoplayLastPosition = position;
+    if (!moving) {
+      this.autoplayStuckMs = 0;
+      this.autoplayRecoveryMs = 0;
+      return direction;
+    }
+    if (this.autoplayRecoveryMs > 0) {
+      this.autoplayRecoveryMs = Math.max(
+        0,
+        this.autoplayRecoveryMs - dt * 1000,
+      );
+      return this.autoplayRecoveryDirection;
+    }
+    this.autoplayStuckMs =
+      displacement < 0.015 ? this.autoplayStuckMs + dt * 1000 : 0;
+    if (this.autoplayStuckMs < 650) return direction;
+    this.navigation.clear("autoplay-player");
+    const candidates = [
+      { x: -direction.z, z: direction.x },
+      { x: direction.z, z: -direction.x },
+      { x: -direction.x, z: -direction.z },
+    ];
+    this.autoplayRecoveryDirection =
+      candidates.find(
+        (candidate) =>
+          !this.blocked(
+            position.x + candidate.x * 1.1,
+            position.z + candidate.z * 1.1,
+          ),
+      ) ?? candidates[2]!;
+    this.autoplayStuckMs = 0;
+    this.autoplayRecoveryMs = 850;
+    this.hud.toast("Autoplay: recalculating route");
+    return this.autoplayRecoveryDirection;
   }
   private canPlayerSee(monster: Monster) {
     return (
@@ -600,9 +681,11 @@ export class WorldScene {
       const result =
         action === "use-potion"
           ? useHealthPotion(this.player.state)
-          : action === "refill-lantern"
-            ? refillLantern(this.player.state)
-            : toggleLantern(this.player.state);
+          : action === "eat-steak"
+            ? eatRawSteak(this.player.state)
+            : action === "refill-lantern"
+              ? refillLantern(this.player.state)
+              : toggleLantern(this.player.state);
       if (result.success) this.hud.toast(`Autoplay: ${result.message}`);
     }
   }
@@ -891,6 +974,11 @@ export class WorldScene {
   }
   useHealthPotion() {
     const result = useHealthPotion(this.player.state);
+    this.hud.toast(result.message);
+    return result;
+  }
+  eatRawSteak() {
+    const result = eatRawSteak(this.player.state);
     this.hud.toast(result.message);
     return result;
   }

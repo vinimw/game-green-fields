@@ -1,0 +1,48 @@
+.hunger-status {
+  position: absolute;
+  top: 116px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(300px, 42vw);
+  color: #f2c589;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  text-shadow: 0 2px 3px #000;
+}
+.hunger-status span {
+  display: block;
+  margin-bottom: 3px;
+}
+.hunger-bar {
+  display: block;
+  height: 12px;
+  border: 2px solid #f0d5a5;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #261a14cc;
+}
+.hunger-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #a9452e, #df9d43);
+  transition: width 0.2s;
+}
+.steak-slot {
+  border-color: #e8a59b !important;
+  background: linear-gradient(#71373be8, #321b20ed) !important;
+}
+.steak-slot kbd {
+  border-color: #efc1b9 !important;
+}
+@media (max-width: 650px) {
+  .hunger-status {
+    top: 128px;
+    width: 65vw;
+  }
+  .item-slots {
+    max-width: 250px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}

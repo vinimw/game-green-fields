@@ -10,6 +10,7 @@ import "../horror-theme.css";
 import "../potions.css";
 import "../tower-upgrade.css";
 import "../boss.css";
+import "../survival.css";
 import { Engine } from "@babylonjs/core";
 import type { PowerType } from "./core/types";
 import { SaveSystem } from "./systems/SaveSystem";
@@ -98,6 +99,7 @@ export class Game {
       () => this.world?.useHealthPotion(),
       () => this.world?.refillLantern(),
       () => this.world?.toggleLantern(),
+      () => this.world?.eatRawSteak(),
     );
     this.world = new WorldScene(
       this.engine,

@@ -4,6 +4,7 @@ import { GAME_CONFIG } from "../config/gameConfig";
 import { attackRange, criticalChance, powerDamage } from "./StatsSystem";
 import { addExperience } from "./ExperienceSystem";
 import { MONSTERS_CONFIG } from "../config/monstersConfig";
+import { consumeAttackHunger } from "./HungerSystem";
 export const isTargetInRange = (distance: number, range: number) =>
   distance <= range;
 export class CombatSystem {
@@ -14,10 +15,10 @@ export class CombatSystem {
       text: string,
       x: number,
       z: number,
-      crit: boolean
+      crit: boolean,
     ) => void,
     private onMonsterKilled: (monster: Monster) => void = () => {},
-    private onLevelUp: () => void = () => {}
+    private onLevelUp: () => void = () => {},
   ) {}
   update(dt: number) {
     this.cooldown = Math.max(0, this.cooldown - dt * 1000);
@@ -30,23 +31,27 @@ export class CombatSystem {
     if (!isTargetInRange(distance, attackRange(this.player.state.powerType)))
       return false;
     this.cooldown = GAME_CONFIG.player.attack.cooldownMs;
+    consumeAttackHunger(this.player.state);
     this.player.root.rotation.y = Math.atan2(dx, dz);
     const critical =
         Math.random() * 100 < criticalChance(this.player.state.stats.agility),
       damage = Math.round(
-        powerDamage(this.player.state.powerType, this.player.state.stats, this.player.state.archerWeaponLevel) *
-        (critical ? GAME_CONFIG.player.critical.damageMultiplier : 1)
+        powerDamage(
+          this.player.state.powerType,
+          this.player.state.stats,
+          this.player.state.archerWeaponLevel,
+        ) * (critical ? GAME_CONFIG.player.critical.damageMultiplier : 1),
       );
     this.feedback(
       String(damage),
       target.root.position.x,
       target.root.position.z,
-      critical
+      critical,
     );
     if (target.damage(damage)) {
       const levelsGained = addExperience(
         this.player.state,
-        MONSTERS_CONFIG[target.state.type].experienceReward
+        MONSTERS_CONFIG[target.state.type].experienceReward,
       );
       if (levelsGained > 0) this.onLevelUp();
       this.onMonsterKilled(target);

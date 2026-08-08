@@ -21,7 +21,7 @@
 }
 .lives-display {
   position: absolute;
-  top: 118px;
+  top: 150px;
   left: 50%;
   transform: translateX(-50%);
   color: #ff6b6b;

@@ -14,6 +14,7 @@ export class Hud {
     onPotion: () => void,
     onGas: () => void,
     onLantern: () => void,
+    onSteak: () => void,
   ) {
     this.el = document.createElement("div");
     this.el.className = "hud";
@@ -22,6 +23,16 @@ export class Hud {
     lives.className = "lives-display";
     lives.setAttribute("aria-label", "Player lives");
     this.el.append(lives);
+    this.el
+      .querySelector(".item-slots")
+      ?.insertAdjacentHTML(
+        "beforeend",
+        `<button class="steak-slot" aria-label="Eat Raw Beef" title="Eat Raw Beef (E)"><span class="item-icon">🥩</span><b class="steak-count">0</b><kbd>E</kbd></button>`,
+      );
+    const hunger = document.createElement("div");
+    hunger.className = "hunger-status";
+    hunger.innerHTML = `<span>HUNGER <b class="hunger-text">100</b></span><i class="hunger-bar"><i></i></i>`;
+    this.el.append(hunger);
     root.append(this.el);
     this.el.querySelector(".menu-btn")?.addEventListener("click", onMenu);
     this.el.querySelector(".shop-btn")?.addEventListener("click", onShop);
@@ -34,6 +45,7 @@ export class Hud {
     this.el
       .querySelector(".lantern-slot")
       ?.addEventListener("click", onLantern);
+    this.el.querySelector(".steak-slot")?.addEventListener("click", onSteak);
     this.el
       .querySelector<HTMLInputElement>(".autoplay-switch input")
       ?.addEventListener("change", (event) =>
@@ -51,6 +63,8 @@ export class Hud {
     this.set(".potion-count", String(player.healthPotions));
     this.set(".gas-count", String(player.gasCanisters));
     this.set(".lantern-fuel", String(Math.ceil(player.lanternFuel)));
+    this.set(".steak-count", String(player.rawSteaks));
+    this.set(".hunger-text", `${player.hunger.toFixed(1)} / 100`);
     this.el
       .querySelector(".potion-slot")
       ?.classList.toggle("empty", player.healthPotions === 0);
@@ -63,8 +77,12 @@ export class Hud {
     this.el
       .querySelector(".lantern-slot")
       ?.classList.toggle("empty", player.lanternFuel === 0);
+    this.el
+      .querySelector(".steak-slot")
+      ?.classList.toggle("empty", player.rawSteaks === 0);
     this.width(".hp i", (player.currentHealth / maximum) * 100);
     this.width(".xp i", (player.xp / required) * 100);
+    this.width(".hunger-bar i", player.hunger);
   }
   updateBase(base: BaseState, maximumHealth: number) {
     const seconds = Math.ceil(base.remainingTimeMs / 1000);

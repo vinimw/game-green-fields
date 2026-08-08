@@ -60,6 +60,10 @@ export class SaveSystem {
             : GAME_CONFIG.player.initialCoins;
       if (typeof legacy.lives !== "number")
         legacy.lives = GAME_CONFIG.player.initialLives;
+      if (typeof legacy.hunger !== "number")
+        legacy.hunger = GAME_CONFIG.player.initialHunger;
+      if (typeof legacy.rawSteaks !== "number")
+        legacy.rawSteaks = GAME_CONFIG.player.initialRawSteaks;
       delete legacy.gold;
       if (typeof legacy.healthPotions !== "number")
         legacy.healthPotions = GAME_CONFIG.player.initialHealthPotions;
@@ -75,6 +79,17 @@ export class SaveSystem {
       player.lives = Math.max(
         0,
         Math.min(GAME_CONFIG.player.maxLives, Math.floor(player.lives)),
+      );
+      player.hunger = Math.max(
+        0,
+        Math.min(GAME_CONFIG.survival.hunger.maximum, player.hunger),
+      );
+      player.rawSteaks = Math.max(
+        0,
+        Math.min(
+          GAME_CONFIG.survival.rawSteak.maxInventory,
+          Math.floor(player.rawSteaks),
+        ),
       );
       player.healthPotions = Math.max(
         0,

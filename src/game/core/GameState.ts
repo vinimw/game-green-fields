@@ -13,6 +13,8 @@ export const createPlayerState = (
     xp: 0,
     coins: GAME_CONFIG.player.initialCoins,
     lives: GAME_CONFIG.player.initialLives,
+    hunger: GAME_CONFIG.player.initialHunger,
+    rawSteaks: GAME_CONFIG.player.initialRawSteaks,
     healthPotions: GAME_CONFIG.player.initialHealthPotions,
     gasCanisters: GAME_CONFIG.player.initialGasCanisters,
     lanternFuel: GAME_CONFIG.player.initialLanternFuel,

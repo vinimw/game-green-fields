@@ -9,6 +9,8 @@ export const GAME_CONFIG = {
     initialLanternFuel: 0,
     initialLives: 3,
     maxLives: 3,
+    initialHunger: 100,
+    initialRawSteaks: 0,
     maxLevel: 100,
     initialPowerType: "magic",
     initialStats: { strength: 6, agility: 6, intelligence: 6, vitality: 6 },
@@ -40,6 +42,19 @@ export const GAME_CONFIG = {
       rotationSpeed: 4,
       jackpotChance: 0.1,
       jackpotMultiplier: 100,
+    },
+  },
+  survival: {
+    hunger: {
+      maximum: 100,
+      lossPerAttack: 0.5,
+      steakRestore: 30,
+      autoplayEatThreshold: 35,
+    },
+    rawSteak: {
+      maxInventory: 30,
+      pickupRadius: 1.25,
+      dropLifetimeMs: 10000,
     },
   },
   effects: {

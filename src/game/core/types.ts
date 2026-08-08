@@ -22,6 +22,8 @@ export type PlayerState = {
   xp: number;
   coins: number;
   lives: number;
+  hunger: number;
+  rawSteaks: number;
   healthPotions: number;
   gasCanisters: number;
   lanternFuel: number;
