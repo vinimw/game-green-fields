@@ -1,4 +1,4 @@
-# Green Fields
+# Green Fields — Dark Fantasy Survival Horror
 
 Protótipo de RPG 3D estilizado para navegador, construído com TypeScript, Vite e Babylon.js. O projeto representa uma vertical slice jogável com exploração, classes, combate, progressão, monstros, drops, defesa de base e persistência local.
 
@@ -185,23 +185,24 @@ Com os multiplicadores conceituais de `0,3%` por level e `1,7%` por Agilidade, l
 
 ## Monstros
 
-### Slime
+### Crawler
 
 - Level 1.
-- Pouca vida.
+- 16 de vida e 22 de dano.
 - Ataque melee próximo.
-- Movimento lento por configuração.
-- Aparece em grupos de três.
+- Movimento rastejante e silhueta humanoide distorcida.
+- Aparece em grupos pequenos de dois.
 - Detecta o jogador somente quando ele está próximo.
 - Persegue por uma distância limitada.
 - Retorna ao local onde nasceu quando perde o alvo.
 
-### Evil Sunflower
+### Wailer
 
 - Level 2.
-- Mais vida e dano que o Slime.
-- Ataque com alcance um pouco maior.
-- Cooldown de ataque menor.
+- 32 de vida e 28 de dano.
+- Silhueta muito alta, fina e antinatural.
+- Ataque de média distância.
+- Movimento lento e cooldown de ataque de 1,8 segundo.
 - Aparece individualmente.
 
 Valores de vida, dano, velocidade, cooldown, alcance e experiência ficam em `src/game/config/monstersConfig.ts`.
@@ -260,17 +261,17 @@ Quando um monstro nasce, sua nova posição aleatória se torna o `spawnPosition
 Cada monstro possui sua configuração de moedas no `MONSTERS_CONFIG`:
 
 ```ts
-slime: {
-  coinDrop: { chance: 0.3, amount: 2 },
+crawler: {
+  coinDrop: { chance: 0.35, amount: 2 },
 }
 
-"evil-sunflower": {
-  coinDrop: { chance: 0.4, amount: 5 },
+wailer: {
+  coinDrop: { chance: 0.5, amount: 4 },
 }
 ```
 
-- Slime: 30% de chance de derrubar 2 moedas.
-- Evil Sunflower: 40% de chance de derrubar 5 moedas.
+- Crawler: 35% de chance de derrubar 2 moedas.
+- Wailer: 50% de chance de derrubar 4 moedas.
 - Moedas aparecem como pickups 3D dourados.
 - A coleta acontece por proximidade.
 - O total aparece no HUD e é persistido no save.
@@ -464,10 +465,10 @@ Esta versão utiliza primitives do Babylon.js para:
 
 - Personagem.
 - Arco e flecha.
-- Slimes.
-- Evil Sunflower.
-- Árvores e pedras.
-- Flores e fogueira.
+- Crawlers.
+- Wailers.
+- Árvores mortas, pedras molhadas e ruínas.
+- Galhos, cercas quebradas, caixas, ossos e o Beacon.
 - Corações e moedas.
 
 Ainda não estão implementados:

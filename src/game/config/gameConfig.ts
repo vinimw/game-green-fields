@@ -3,7 +3,7 @@ export const GAME_CONFIG = {
   mapId: "green-fields",
   player: {
     initialLevel: 1,
-    initialCoins: 0, // 0
+    initialCoins: 10000, // 0
     maxLevel: 100,
     initialPowerType: "magic",
     initialStats: { strength: 1, agility: 1, intelligence: 1, vitality: 1 },
@@ -45,8 +45,8 @@ export const GAME_CONFIG = {
   base: {
     maxHealth: 300,
     position: { x: 0, z: 0 },
-    raidIntervalMs: 50000, //60000
-    raidDurationMs: 30000, //30000
+    raidIntervalMs: 30000, //60000
+    raidDurationMs: 20000, //30000
   },
   shop: {
     baseHealthRepair: { cost: 2, healthRestore: 100 },

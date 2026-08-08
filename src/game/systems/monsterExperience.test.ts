@@ -1,7 +1,1 @@
-import { describe,expect,it } from 'vitest';
-import { MONSTERS_CONFIG } from '../config/monstersConfig';
-
-describe('monster experience configuration',()=>{
-  it('configures a positive XP reward for a slime',()=>expect(MONSTERS_CONFIG.slime.experienceReward).toBeGreaterThan(0));
-  it('configures a positive XP reward for an evil sunflower',()=>expect(MONSTERS_CONFIG['evil-sunflower'].experienceReward).toBeGreaterThan(0));
-});
+import { describe,expect,it } from 'vitest';import { MONSTERS_CONFIG } from '../config/monstersConfig';describe('monster experience configuration',()=>{it('configures Crawler XP',()=>expect(MONSTERS_CONFIG.crawler.experienceReward).toBe(12));it('configures Wailer XP',()=>expect(MONSTERS_CONFIG.wailer.experienceReward).toBe(25));});

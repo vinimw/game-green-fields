@@ -1,56 +1,6 @@
-export type MonsterType = "slime" | "evil-sunflower";
-export const MONSTERS_CONFIG = {
-  slime: {
-    level: 1,
-    health: 5,
-    damage: 40, //10
-    experienceReward: 80, //1
-    coinDrop: { chance: 0.7, amount: 2 }, //{ chance: 0.3, amount: 2 },
-    attackCooldownMs: 1000,
-    movementSpeed: 5, //1
-    detectionRadius: 7,
-    leashRadius: 11,
-    attackRadius: 1.35,
-  },
-  "evil-sunflower": {
-    level: 2,
-    health: 20,
-    damage: 15,
-    experienceReward: 50,
-    coinDrop: { chance: 0.8, amount: 5 }, //{ chance: 0.4, amount: 5 }
-    attackCooldownMs: 800,
-    movementSpeed: 1.7,
-    detectionRadius: 8,
-    leashRadius: 12,
-    attackRadius: 2.2,
-  },
+export type MonsterType='crawler'|'wailer';
+export const MONSTERS_CONFIG={
+  crawler:{level:1,health:16,damage:22,experienceReward:12,coinDrop:{chance:.35,amount:2},attackCooldownMs:1200,movementSpeed:2.4,detectionRadius:8,leashRadius:16,attackRadius:1.25},
+  wailer:{level:2,health:32,damage:28,experienceReward:25,coinDrop:{chance:.5,amount:4},attackCooldownMs:1800,movementSpeed:1.15,detectionRadius:12,leashRadius:18,attackRadius:5},
 } as const;
-
-export const MONSTER_SPAWN_CONFIG = {
-  enabled: true,
-  maxMonsters: 80, //15
-  initialPopulationPercent: 0.7,
-  minDistanceFromPlayer: 20,
-  maxSpawnAttempts: 30,
-  obstacleClearance: 1.5,
-  groupRadius: 3,
-  retryDelayMs: 1000,
-  respawn: { defaultDelayMs: 2000 }, //5000
-  monsters: {
-    slime: {
-      enabled: true,
-      maxAlive: 12,
-      respawnDelayMs: 5000,
-      spawnGroupSize: 3,
-      spawnWeight: 70,
-    },
-    "evil-sunflower": {
-      enabled: true,
-      maxAlive: 5, //3
-      respawnDelayMs: 3000, //8000
-      spawnGroupSize: 1,
-      spawnWeight: 30,
-    },
-  },
-  debug: { showSpawnAreas: true },
-} as const;
+export const MONSTER_SPAWN_CONFIG={enabled:true,maxMonsters:14,initialPopulationPercent:.45,minDistanceFromPlayer:18,maxSpawnAttempts:30,obstacleClearance:1.5,groupRadius:3,retryDelayMs:1000,respawn:{defaultDelayMs:15000},monsters:{crawler:{enabled:true,maxAlive:10,respawnDelayMs:12000,spawnGroupSize:2,spawnWeight:70},wailer:{enabled:true,maxAlive:4,respawnDelayMs:18000,spawnGroupSize:1,spawnWeight:30}},debug:{showSpawnAreas:false}} as const;
