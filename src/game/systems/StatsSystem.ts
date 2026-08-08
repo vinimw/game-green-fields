@@ -1,7 +1,9 @@
-import { GAME_CONFIG } from '../config/gameConfig'; import { getArcherWeapon } from '../config/archerWeaponsConfig'; import type { PlayerState, PowerType, Stats } from '../core/types';
+import { GAME_CONFIG } from '../config/gameConfig'; import { getArcherWeapon } from '../config/archerWeaponsConfig'; import { getArcherBoots } from '../config/archerBootsConfig'; import type { PlayerState, PowerType, Stats } from '../core/types';
 export const maxHealth = (vitality: number, level = 1) => GAME_CONFIG.player.baseHealth + (vitality - 1) * GAME_CONFIG.player.healthPerVitality + (level - 1) * GAME_CONFIG.player.healthPerLevel;
 export const criticalChance = (a: number) => a * GAME_CONFIG.player.critical.agilityMultiplier;
-export const movementSpeed = (level: number, agility: number) => GAME_CONFIG.player.movement.baseSpeed * (1 + (level * GAME_CONFIG.player.movement.levelBonusPercent + agility * GAME_CONFIG.player.movement.agilityBonusPercent) / 100);
+export const bootsSpeedBonusPercent=(bootsLevel:number)=>getArcherBoots(bootsLevel)?.movementSpeedBonusPercent??0;
+export const movementSpeedBonuses=(level:number,agility:number,bootsLevel=0)=>{const levelBonusPercent=level*GAME_CONFIG.player.movement.levelBonusPercent,agilityBonusPercent=agility*GAME_CONFIG.player.movement.agilityBonusPercent,bootsBonusPercent=bootsSpeedBonusPercent(bootsLevel);return{levelBonusPercent,agilityBonusPercent,bootsBonusPercent,totalBonusPercent:levelBonusPercent+agilityBonusPercent+bootsBonusPercent};};
+export const movementSpeed = (level: number, agility: number,bootsLevel=0) => GAME_CONFIG.player.movement.baseSpeed * (1 + movementSpeedBonuses(level,agility,bootsLevel).totalBonusPercent / 100);
 export const initialStatPoints = (level: number) => (level - 1) * GAME_CONFIG.player.statPointsPerLevel;
 export const basePowerDamage = (powerType:PowerType,stats:Stats) => (powerType==='archer'?stats.agility:stats.intelligence)*GAME_CONFIG.player.attack.powerStatMultiplier;
 export const weaponDamageBonusPercent = (weaponLevel:number) => getArcherWeapon(weaponLevel)?.damageBonusPercent??0;

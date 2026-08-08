@@ -1,0 +1,1 @@
+.shop-tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.shop-tabs button{margin:0;opacity:.7}.shop-tabs button.active{opacity:1;background:linear-gradient(#d89d3f,#a46517);border-color:#ffe3a0;box-shadow:0 5px 0 #6c4214}.not-enough{text-align:center;color:#9e3028;font-weight:800}

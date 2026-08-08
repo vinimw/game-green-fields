@@ -2,7 +2,7 @@ export const GAME_CONFIG = {
   debug: true,
   mapId: "green-fields",
   player: {
-    initialLevel: 1,
+    initialLevel: 60,
     initialCoins: 60000, // 0
     maxLevel: 100,
     initialPowerType: "magic",

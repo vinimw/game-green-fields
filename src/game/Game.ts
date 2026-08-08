@@ -1,4 +1,4 @@
-import '../power-selection.css'; import '../base.css'; import '../coins.css'; import '../shop.css'; import '../modal-controls.css';
+import '../power-selection.css'; import '../base.css'; import '../coins.css'; import '../shop.css'; import '../boots-shop.css'; import '../modal-controls.css';
 import { Engine } from '@babylonjs/core';
 import type { PowerType } from './core/types';
 import { SaveSystem } from './systems/SaveSystem'; import { Hud } from './ui/Hud'; import { PauseMenu } from './ui/PauseMenu'; import { ShopMenu } from './ui/ShopMenu'; import { VirtualJoystick } from './ui/VirtualJoystick'; import { WorldScene } from './scenes/WorldScene';
@@ -14,7 +14,7 @@ export class Game {
     const hud = new Hud(this.ui, () => { shop.toggle(false); if(menu.isOpen())menu.toggle(false);else menu.openMain(); if (this.world) this.world.paused = menu.isOpen(); }, () => { menu.toggle(false); shop.toggle(); if (this.world) this.world.paused = shop.isOpen(); }, () => { shop.toggle(false); menu.openCharacter(); if (this.world) this.world.paused = true; });
     this.world = new WorldScene(this.engine, this.ui, hud, data, powerType, () => this.showGameOver());
     menu = new PauseMenu(this.ui, this.world.player.state, () => { menu.toggle(false); this.world!.paused = false; }, () => { this.save.save(this.world!.snapshot()); hud.toast('Game saved'); });
-    shop = new ShopMenu(this.ui, () => this.world!.getShopState(), () => this.world!.buyBaseHealth(), () => this.world!.buyArcherWeapon(), () => { shop.toggle(false); this.world!.paused = false; });
+    shop = new ShopMenu(this.ui, () => this.world!.getShopState(), () => this.world!.buyBaseHealth(), () => this.world!.buyArcherWeapon(), () => this.world!.buyArcherBoots(), () => { shop.toggle(false); this.world!.paused = false; });
     new VirtualJoystick(this.ui, this.world.input); let last = performance.now(); this.engine.runRenderLoop(() => { const now = performance.now(), dt = Math.min(.05, (now - last) / 1000); last = now; this.world!.update(dt); this.world!.scene.render(); });
   }
   private showGameOver() { this.save.clear(); const overlay = document.createElement('div'); overlay.className = 'overlay game-over'; overlay.innerHTML = `<div class="panel"><h1>Game Over</h1><p class="empty">The base core was destroyed.</p><p>Your progress has been lost. Begin a new adventure.</p><button>Start New Game</button></div>`; this.ui.append(overlay); overlay.querySelector('button')?.addEventListener('click', () => { this.engine.stopRenderLoop(); this.world = undefined; this.showPowerSelection(); }); }
