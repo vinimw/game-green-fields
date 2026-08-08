@@ -1,6 +1,2 @@
-import { describe,expect,it } from 'vitest';
-import { GAME_CONFIG } from '../config/gameConfig';
-import { createPlayerState } from '../core/GameState';
-import { maxHealth,resetStats } from './StatsSystem';
-
-describe('stat reset',()=>{it('returns all earned points and restores configured base stats',()=>{const player=createPlayerState();player.level=10;player.stats.strength+=3;player.stats.vitality+=6;player.availableStatPoints=0;resetStats(player);expect(player.stats).toEqual(GAME_CONFIG.player.initialStats);expect(player.availableStatPoints).toBe(9);});it('clamps health to the reset maximum',()=>{const player=createPlayerState();player.stats.vitality=10;player.currentHealth=190;resetStats(player);expect(player.currentHealth).toBe(maxHealth(GAME_CONFIG.player.initialStats.vitality));});});
+import { describe,expect,it } from 'vitest';import { GAME_CONFIG } from '../config/gameConfig';import { createPlayerState } from '../core/GameState';import { maxHealth,resetStats } from './StatsSystem';
+describe('stat reset',()=>{it('returns all earned points and restores configured base stats',()=>{const player=createPlayerState();player.level=10;player.stats.strength+=3;player.stats.vitality+=6;player.availableStatPoints=0;resetStats(player);expect(player.stats).toEqual(GAME_CONFIG.player.initialStats);expect(player.availableStatPoints).toBe(9);});it('clamps health to the reset maximum',()=>{const player=createPlayerState();player.level=1;player.stats.vitality=10;player.currentHealth=190;resetStats(player);expect(player.currentHealth).toBe(maxHealth(GAME_CONFIG.player.initialStats.vitality,1));});});

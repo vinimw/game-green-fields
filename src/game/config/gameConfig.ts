@@ -2,8 +2,8 @@ export const GAME_CONFIG = {
   debug: true,
   mapId: "green-fields",
   player: {
-    initialLevel: 60,
-    initialCoins: 60000, // 0
+    initialLevel: 1,
+    initialCoins: 0, // 0
     maxLevel: 100,
     initialPowerType: "magic",
     initialStats: { strength: 1, agility: 1, intelligence: 1, vitality: 1 },
@@ -58,6 +58,12 @@ export const GAME_CONFIG = {
     pauseMinMs: 700,
     pauseMaxMs: 1800,
     maxTargetAttempts: 12,
+  },
+  autoplay: {
+    criticalHealthPercent: 35,
+    heartMinimumMissingHealth: 15,
+    safeHealthDamageMultiplier: 2.5,
+    targetRefreshMs: 500,
   },
   saveKey: "simple-rpg-save:v1",
 } as const;
