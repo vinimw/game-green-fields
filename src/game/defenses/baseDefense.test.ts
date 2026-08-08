@@ -1,9 +1,136 @@
-import { beforeEach,describe,expect,it } from 'vitest';import { DEFENSE_CONFIG,getNextDefenseCost } from '../config/defenseConfig';import { createPlayerState } from '../core/GameState';import type { DefenseState,SaveData } from '../core/types';import { SaveSystem } from '../systems/SaveSystem';import { advanceDefenseCooldown,canDefenseFire,nearestDefenseTarget } from './DefenseManager';import { DefensePlacementValidator } from './DefensePlacementValidator';import { purchaseMiniTower } from './DefensePurchaseSystem';
-const defense=(id:string,x:number,z:number):DefenseState=>({id,type:'mini-tower',level:1,position:{x,y:0,z},rotation:0,currentHealth:100});const validator=new DefensePlacementValidator({x:0,z:0},60,[]);
-describe('Mini Tower economy and placement',()=>{
-  it('prices the first tower at 1500',()=>expect(getNextDefenseCost(0)).toBe(1500));it('prices the second at 3000',()=>expect(getNextDefenseCost(1)).toBe(3000));it('prices the third at 4500',()=>expect(getNextDefenseCost(2)).toBe(4500));it('scales all prices by base cost times count plus one',()=>expect(getNextDefenseCost(7)).toBe(DEFENSE_CONFIG.miniTower.baseCost*8));
-  it('rejects placement beyond Core maximum distance',()=>expect(validator.validate({x:31,z:0},[]).valid).toBe(false));it('rejects placement below Core minimum distance',()=>expect(validator.validate({x:4,z:0},[]).valid).toBe(false));it('rejects defenses closer than minimum spacing',()=>expect(validator.validate({x:10,z:0},[defense('one',15,0)]).valid).toBe(false));it('accepts a clear position in the build area',()=>expect(validator.validate({x:10,z:0},[]).valid).toBe(true));it('rejects trees, rocks and other configured obstacles',()=>expect(new DefensePlacementValidator({x:0,z:0},60,[{x:10,z:0,radius:1}]).validate({x:10,z:0},[]).valid).toBe(false));
-  it('builds, deducts Coins and creates level one state',()=>{const result=purchaseMiniTower(2000,{x:10,z:0},[],validator,'tower-a');expect(result).toMatchObject({success:true,coins:500,defense:{id:'tower-a',level:1,currentHealth:300}});});it('never makes Coins negative',()=>expect(purchaseMiniTower(1499,{x:10,z:0},[],validator).coins).toBe(1499));it('cancelling performs no purchase and spends no Coins',()=>{const coins=1500;expect(coins).toBe(1500);});
+import { beforeEach, describe, expect, it } from "vitest";
+import { DEFENSE_CONFIG, getNextDefenseCost } from "../config/defenseConfig";
+import { createPlayerState } from "../core/GameState";
+import type { DefenseState, SaveData } from "../core/types";
+import { SaveSystem } from "../systems/SaveSystem";
+import {
+  advanceDefenseCooldown,
+  canDefenseFire,
+  nearestDefenseTarget,
+} from "./DefenseManager";
+import { DefensePlacementValidator } from "./DefensePlacementValidator";
+import { purchaseMiniTower } from "./DefensePurchaseSystem";
+const defense = (id: string, x: number, z: number): DefenseState => ({
+  id,
+  type: "mini-tower",
+  level: 1,
+  position: { x, y: 0, z },
+  rotation: 0,
+  currentHealth: 100,
 });
-describe('Mini Tower combat rules',()=>{it('has configured damage 5',()=>expect(DEFENSE_CONFIG.miniTower.damage).toBe(5));it('selects nearest target inside range',()=>{const near={alive:true,position:{x:5,z:0}},far={alive:true,position:{x:10,z:0}};expect(nearestDefenseTarget({x:0,z:0},[far,near])).toBe(near);});it('ignores targets outside range',()=>expect(nearestDefenseTarget({x:0,z:0},[{alive:true,position:{x:13,z:0}}])).toBeUndefined());it('respects and advances cooldown',()=>{expect(canDefenseFire(1000)).toBe(false);expect(advanceDefenseCooldown(1000,999)).toBe(1);expect(canDefenseFire(advanceDefenseCooldown(1000,1000))).toBe(true);});it('cannot fire when darkness blocks its vision',()=>expect(canDefenseFire(0,false)).toBe(false));});
-describe('Defense save/load',()=>{const memory=new Map<string,string>();beforeEach(()=>{memory.clear();Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:(key:string)=>memory.get(key)??null,setItem:(key:string,value:string)=>memory.set(key,value),removeItem:(key:string)=>memory.delete(key)}});});it('preserves Defense quantity and exact position',()=>{const towers=[defense('a',10,12),defense('b',-8,16)],data={version:1,player:createPlayerState('archer'),world:{mapId:'green-fields',monsters:[],defenses:towers,npcs:[],objects:[]}} satisfies SaveData,saves=new SaveSystem();saves.save(data);const loaded=saves.load()!;expect(loaded.world.defenses).toHaveLength(2);expect(loaded.world.defenses?.[0]?.position).toEqual({x:10,y:0,z:12});});it('calculates next cost from loaded tower count',()=>{const towers=[defense('a',10,12),defense('b',-8,16)];expect(getNextDefenseCost(towers.length)).toBe(4500);});});
+const validator = new DefensePlacementValidator({ x: 0, z: 0 }, 60, []);
+describe("Mini Tower economy and placement", () => {
+  it("prices the first tower at 1500", () =>
+    expect(getNextDefenseCost(0)).toBe(1500));
+  it("prices the second at 3000", () =>
+    expect(getNextDefenseCost(1)).toBe(3000));
+  it("prices the third at 4500", () =>
+    expect(getNextDefenseCost(2)).toBe(4500));
+  it("scales all prices by base cost times count plus one", () =>
+    expect(getNextDefenseCost(7)).toBe(DEFENSE_CONFIG.miniTower.baseCost * 8));
+  it("rejects placement beyond Core maximum distance", () =>
+    expect(validator.validate({ x: 31, z: 0 }, []).valid).toBe(false));
+  it("rejects placement below Core minimum distance", () =>
+    expect(validator.validate({ x: 4, z: 0 }, []).valid).toBe(false));
+  it("rejects defenses closer than minimum spacing", () =>
+    expect(
+      validator.validate({ x: 10, z: 0 }, [defense("one", 15, 0)]).valid,
+    ).toBe(false));
+  it("accepts a clear position in the build area", () =>
+    expect(validator.validate({ x: 10, z: 0 }, []).valid).toBe(true));
+  it("rejects trees, rocks and other configured obstacles", () =>
+    expect(
+      new DefensePlacementValidator({ x: 0, z: 0 }, 60, [
+        { x: 10, z: 0, radius: 1 },
+      ]).validate({ x: 10, z: 0 }, []).valid,
+    ).toBe(false));
+  it("builds, deducts Coins and creates level one state", () => {
+    const result = purchaseMiniTower(
+      2000,
+      { x: 10, z: 0 },
+      [],
+      validator,
+      "tower-a",
+    );
+    expect(result).toMatchObject({
+      success: true,
+      coins: 500,
+      defense: {
+        id: "tower-a",
+        level: 1,
+        currentHealth: DEFENSE_CONFIG.miniTower.maxHealth,
+      },
+    });
+  });
+  it("never makes Coins negative", () =>
+    expect(purchaseMiniTower(1499, { x: 10, z: 0 }, [], validator).coins).toBe(
+      1499,
+    ));
+  it("cancelling performs no purchase and spends no Coins", () => {
+    const coins = 1500;
+    expect(coins).toBe(1500);
+  });
+});
+describe("Mini Tower combat rules", () => {
+  it("has configured damage 5", () =>
+    expect(DEFENSE_CONFIG.miniTower.damage).toBe(5));
+  it("selects nearest target inside range", () => {
+    const near = { alive: true, position: { x: 5, z: 0 } },
+      far = { alive: true, position: { x: 10, z: 0 } };
+    expect(nearestDefenseTarget({ x: 0, z: 0 }, [far, near])).toBe(near);
+  });
+  it("ignores targets outside range", () =>
+    expect(
+      nearestDefenseTarget({ x: 0, z: 0 }, [
+        { alive: true, position: { x: 13, z: 0 } },
+      ]),
+    ).toBeUndefined());
+  it("respects and advances cooldown", () => {
+    expect(canDefenseFire(1000)).toBe(false);
+    expect(advanceDefenseCooldown(1000, 999)).toBe(1);
+    expect(canDefenseFire(advanceDefenseCooldown(1000, 1000))).toBe(true);
+  });
+  it("cannot fire when darkness blocks its vision", () =>
+    expect(canDefenseFire(0, false)).toBe(false));
+});
+describe("Defense save/load", () => {
+  const memory = new Map<string, string>();
+  beforeEach(() => {
+    memory.clear();
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => memory.get(key) ?? null,
+        setItem: (key: string, value: string) => memory.set(key, value),
+        removeItem: (key: string) => memory.delete(key),
+      },
+    });
+  });
+  it("preserves Defense quantity and exact position", () => {
+    const towers = [defense("a", 10, 12), defense("b", -8, 16)],
+      data = {
+        version: 1,
+        player: createPlayerState("archer"),
+        world: {
+          mapId: "green-fields",
+          monsters: [],
+          defenses: towers,
+          npcs: [],
+          objects: [],
+        },
+      } satisfies SaveData,
+      saves = new SaveSystem();
+    saves.save(data);
+    const loaded = saves.load()!;
+    expect(loaded.world.defenses).toHaveLength(2);
+    expect(loaded.world.defenses?.[0]?.position).toEqual({
+      x: 10,
+      y: 0,
+      z: 12,
+    });
+  });
+  it("calculates next cost from loaded tower count", () => {
+    const towers = [defense("a", 10, 12), defense("b", -8, 16)];
+    expect(getNextDefenseCost(towers.length)).toBe(4500);
+  });
+});

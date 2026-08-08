@@ -15,7 +15,7 @@ export const HORROR_THEME_CONFIG = {
   },
   darkness: {
     enabled: true,
-    intervalMs: 300000, //30000
+    intervalMs: 10000, //30000
     durationMs: 5000,
     fogDensity: 0.065,
     sky: "#020304",

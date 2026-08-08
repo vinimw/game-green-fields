@@ -16,7 +16,7 @@ const boot = (
   name: string,
   rarity: EquipmentRarity,
   price: number,
-  placeholderColor: string
+  placeholderColor: string,
 ): ArcherBootConfig => ({
   level,
   id,
@@ -46,7 +46,7 @@ export const ARCHER_BOOTS: readonly ArcherBootConfig[] = [
     "Celestial Striders",
     "mythic",
     24000,
-    "#C9B5FF"
+    "#C9B5FF",
   ),
 ] as const;
 export const MAX_ARCHER_BOOTS_LEVEL = ARCHER_BOOTS.length;

@@ -1,10 +1,5 @@
 export type WeaponRarity =
-  | "common"
-  | "uncommon"
-  | "rare"
-  | "epic"
-  | "legendary"
-  | "mythic";
+  "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 export type ArcherWeaponConfig = {
   level: number;
   id: string;
@@ -22,7 +17,7 @@ const bow = (
   name: string,
   rarity: WeaponRarity,
   price: number,
-  placeholderColor: string
+  placeholderColor: string,
 ): ArcherWeaponConfig => ({
   level,
   id,

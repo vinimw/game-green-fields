@@ -1,0 +1,31 @@
+.boss-warning {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle, transparent 35%, rgba(150, 0, 0, 0.42));
+  box-shadow: inset 0 0 100px 35px rgba(255, 0, 0, 0.45);
+  transition: opacity 0.2s;
+}
+.boss-warning.active {
+  animation: boss-red-warning 0.75s infinite alternate;
+}
+@keyframes boss-red-warning {
+  from {
+    opacity: 0.12;
+  }
+  to {
+    opacity: 0.9;
+  }
+}
+.lives-display {
+  position: absolute;
+  top: 118px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ff6b6b;
+  font-size: 20px;
+  letter-spacing: 4px;
+  text-shadow: 0 2px 4px #000;
+}
