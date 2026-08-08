@@ -3,9 +3,9 @@ export const MONSTERS_CONFIG = {
   slime: {
     level: 1,
     health: 5,
-    damage: 10,
+    damage: 40, //10
     experienceReward: 80, //1
-    coinDrop: { chance: 0.3, amount: 2 },
+    coinDrop: { chance: 0.7, amount: 2 }, //{ chance: 0.3, amount: 2 },
     attackCooldownMs: 1000,
     movementSpeed: 5, //1
     detectionRadius: 7,
@@ -17,7 +17,7 @@ export const MONSTERS_CONFIG = {
     health: 20,
     damage: 15,
     experienceReward: 50,
-    coinDrop: { chance: 0.4, amount: 5 },
+    coinDrop: { chance: 0.8, amount: 5 }, //{ chance: 0.4, amount: 5 }
     attackCooldownMs: 800,
     movementSpeed: 1.7,
     detectionRadius: 8,
@@ -28,14 +28,14 @@ export const MONSTERS_CONFIG = {
 
 export const MONSTER_SPAWN_CONFIG = {
   enabled: true,
-  maxMonsters: 15,
+  maxMonsters: 80, //15
   initialPopulationPercent: 0.7,
   minDistanceFromPlayer: 20,
   maxSpawnAttempts: 30,
   obstacleClearance: 1.5,
   groupRadius: 3,
   retryDelayMs: 1000,
-  respawn: { defaultDelayMs: 5000 },
+  respawn: { defaultDelayMs: 2000 }, //5000
   monsters: {
     slime: {
       enabled: true,
@@ -46,8 +46,8 @@ export const MONSTER_SPAWN_CONFIG = {
     },
     "evil-sunflower": {
       enabled: true,
-      maxAlive: 3,
-      respawnDelayMs: 8000,
+      maxAlive: 5, //3
+      respawnDelayMs: 3000, //8000
       spawnGroupSize: 1,
       spawnWeight: 30,
     },

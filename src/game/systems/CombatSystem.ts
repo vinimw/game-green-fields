@@ -33,9 +33,10 @@ export class CombatSystem {
     this.player.root.rotation.y = Math.atan2(dx, dz);
     const critical =
         Math.random() * 100 < criticalChance(this.player.state.stats.agility),
-      damage =
-        powerDamage(this.player.state.powerType, this.player.state.stats) *
-        (critical ? GAME_CONFIG.player.critical.damageMultiplier : 1);
+      damage = Math.round(
+        powerDamage(this.player.state.powerType, this.player.state.stats, this.player.state.archerWeaponLevel) *
+        (critical ? GAME_CONFIG.player.critical.damageMultiplier : 1)
+      );
     this.feedback(
       String(damage),
       target.root.position.x,
