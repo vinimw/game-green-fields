@@ -139,140 +139,184 @@ export class Monster {
         this.meshes.push(arm);
       }
     } else if (this.state.type === "bear") {
-      const fur = this.material("bear-fur", "#241613"),
-        darkFur = this.material("bear-dark-fur", "#0E0A0A"),
-        bone = this.material("bear-bone", "#C7B99B"),
-        blood = this.material("bear-blood", "#65110D"),
-        eyes = this.material("bear-eyes", "#FF2418");
-      eyes.emissiveColor = Color3.FromHexString("#FF160B");
-      blood.emissiveColor = Color3.FromHexString("#270302");
+      const fur = this.material("bear-fur", "#2B1D19"),
+        darkFur = this.material("bear-dark-fur", "#120D0C"),
+        muzzleMaterial = this.material("bear-muzzle-material", "#4A3028"),
+        bone = this.material("bear-bone", "#D2C5A5"),
+        blood = this.material("bear-blood", "#7B1712"),
+        eyes = this.material("bear-eyes", "#FF3B24");
+      for (const material of [fur, darkFur, muzzleMaterial, bone, blood])
+        material.specularColor = Color3.Black();
+      eyes.emissiveColor = Color3.FromHexString("#D91B10");
+      blood.emissiveColor = Color3.FromHexString("#260201");
       const body = MeshBuilder.CreateSphere(
         "bear-body",
-        { diameter: 2.8, segments: 12 },
+        { diameter: 3.15, segments: 16 },
         this.scene,
       );
-      this.add(body, 1.5, fur);
-      body.scaling.set(0.9, 0.85, 1.3);
+      this.add(body, 1.55, fur);
+      body.scaling.set(0.92, 0.82, 1.22);
+      const shoulders = MeshBuilder.CreateSphere(
+        "bear-shoulders",
+        { diameter: 2.65, segments: 14 },
+        this.scene,
+      );
+      shoulders.parent = this.visual;
+      shoulders.material = darkFur;
+      shoulders.position.set(0, 1.95, 0.42);
+      shoulders.scaling.set(1.08, 0.72, 0.82);
+      this.meshes.push(shoulders);
+      const mane = MeshBuilder.CreateTorus(
+        "bear-mane",
+        { diameter: 2.25, thickness: 0.34, tessellation: 16 },
+        this.scene,
+      );
+      mane.parent = this.visual;
+      mane.material = darkFur;
+      mane.position.set(0, 2.22, 0.98);
+      mane.rotation.x = Math.PI / 2;
+      mane.scaling.y = 0.8;
+      this.meshes.push(mane);
       const head = MeshBuilder.CreateSphere(
         "bear-head",
-        { diameter: 1.75, segments: 12 },
+        { diameter: 1.95, segments: 16 },
         this.scene,
       );
-      this.add(head, 2.35, darkFur);
-      head.position.z = 1.35;
-      head.scaling.set(1.08, 0.9, 1.2);
+      this.add(head, 2.52, fur);
+      head.position.z = 1.48;
+      head.scaling.set(1.05, 0.96, 1.08);
       const snout = MeshBuilder.CreateSphere(
         "bear-snout",
-        { diameter: 1.05, segments: 10 },
+        { diameter: 1.15, segments: 14 },
         this.scene,
       );
       snout.parent = this.visual;
-      snout.material = blood;
-      snout.position.set(0, 2.18, 2.18);
-      snout.scaling.set(1.1, 0.6, 0.85);
+      snout.material = muzzleMaterial;
+      snout.position.set(0, 2.28, 2.34);
+      snout.scaling.set(1.08, 0.62, 0.9);
       this.meshes.push(snout);
-      for (const x of [-0.55, 0.55]) {
+      const jaw = MeshBuilder.CreateSphere(
+        "bear-jaw",
+        { diameter: 0.98, segments: 12 },
+        this.scene,
+      );
+      jaw.parent = this.visual;
+      jaw.material = darkFur;
+      jaw.position.set(0, 1.96, 2.4);
+      jaw.scaling.set(1, 0.45, 0.85);
+      this.meshes.push(jaw);
+      const nose = MeshBuilder.CreateSphere(
+        "bear-nose",
+        { diameter: 0.48, segments: 10 },
+        this.scene,
+      );
+      nose.parent = this.visual;
+      nose.material = darkFur;
+      nose.position.set(0, 2.42, 2.82);
+      nose.scaling.set(1.2, 0.75, 0.65);
+      this.meshes.push(nose);
+      for (const x of [-0.62, 0.62]) {
         const ear = MeshBuilder.CreateSphere(
           "bear-ear",
-          { diameter: 0.55, segments: 8 },
+          { diameter: 0.62, segments: 12 },
           this.scene,
         );
         ear.parent = this.visual;
-        ear.material = fur;
-        ear.position.set(x, 3.05, 1.25);
+        ear.material = darkFur;
+        ear.position.set(x, 3.2, 1.38);
+        ear.scaling.z = 0.55;
         this.meshes.push(ear);
         const eye = MeshBuilder.CreateSphere(
           "bear-eye",
-          { diameter: 0.16, segments: 6 },
+          { diameter: 0.15, segments: 8 },
           this.scene,
         );
         eye.parent = this.visual;
         eye.material = eyes;
-        eye.position.set(x * 0.5, 2.55, 2.12);
+        eye.position.set(x * 0.48, 2.68, 2.3);
         this.meshes.push(eye);
-        const horn = MeshBuilder.CreateCylinder(
-          "bear-horn",
-          {
-            height: 1.05,
-            diameterTop: 0,
-            diameterBottom: 0.28,
-            tessellation: 7,
-          },
+        const brow = MeshBuilder.CreateBox(
+          "bear-brow",
+          { width: 0.7, height: 0.16, depth: 0.22 },
           this.scene,
         );
-        horn.parent = this.visual;
-        horn.material = bone;
-        horn.position.set(x * 1.12, 3.48, 1.18);
-        horn.rotation.z = x > 0 ? -0.38 : 0.38;
-        this.meshes.push(horn);
+        brow.parent = this.visual;
+        brow.material = darkFur;
+        brow.position.set(x * 0.48, 2.86, 2.23);
+        brow.rotation.z = x > 0 ? -0.28 : 0.28;
+        this.meshes.push(brow);
         const fang = MeshBuilder.CreateCylinder(
           "bear-fang",
           {
-            height: 0.72,
+            height: 0.56,
             diameterTop: 0,
-            diameterBottom: 0.2,
-            tessellation: 7,
+            diameterBottom: 0.17,
+            tessellation: 8,
           },
           this.scene,
         );
         fang.parent = this.visual;
         fang.material = bone;
-        fang.position.set(x * 0.43, 1.85, 2.58);
+        fang.position.set(x * 0.42, 1.85, 2.66);
         fang.rotation.x = Math.PI;
         this.meshes.push(fang);
       }
       for (const [x, z] of [
-        [-0.75, -0.65],
-        [0.75, -0.65],
-        [-0.75, 0.75],
-        [0.75, 0.75],
+        [-0.82, -0.72],
+        [0.82, -0.72],
+        [-0.86, 0.78],
+        [0.86, 0.78],
       ] as const) {
         const leg = MeshBuilder.CreateCapsule(
           "bear-leg",
-          { height: 1.45, radius: 0.28 },
+          { height: z > 0 ? 1.72 : 1.52, radius: z > 0 ? 0.36 : 0.32 },
           this.scene,
         );
         leg.parent = this.visual;
         leg.material = darkFur;
-        leg.position.set(x, 0.6, z);
+        leg.position.set(x, 0.68, z);
         this.meshes.push(leg);
-        if (z > 0) {
-          for (let clawIndex = -1; clawIndex <= 1; clawIndex++) {
-            const claw = MeshBuilder.CreateCylinder(
-              "bear-claw",
-              {
-                height: 0.65,
-                diameterTop: 0,
-                diameterBottom: 0.13,
-                tessellation: 6,
-              },
-              this.scene,
-            );
-            claw.parent = this.visual;
-            claw.material = bone;
-            claw.position.set(x + clawIndex * 0.14, 0.18, z + 0.55);
-            claw.rotation.x = Math.PI / 2;
-            this.meshes.push(claw);
-          }
-        }
-      }
-      for (let index = 0; index < 5; index++) {
-        const spike = MeshBuilder.CreateCylinder(
-          "bear-back-spike",
-          {
-            height: 0.85 + index * 0.09,
-            diameterTop: 0,
-            diameterBottom: 0.24,
-            tessellation: 7,
-          },
+        const paw = MeshBuilder.CreateSphere(
+          "bear-paw",
+          { diameter: z > 0 ? 0.82 : 0.7, segments: 10 },
           this.scene,
         );
-        spike.parent = this.visual;
-        spike.material = bone;
-        spike.position.set(0, 2.8, -0.95 + index * 0.46);
-        this.meshes.push(spike);
+        paw.parent = this.visual;
+        paw.material = fur;
+        paw.position.set(x, 0.2, z + 0.3);
+        paw.scaling.set(1.1, 0.48, 1.35);
+        this.meshes.push(paw);
+        for (let clawIndex = -1; clawIndex <= 1; clawIndex++) {
+          const claw = MeshBuilder.CreateCylinder(
+            "bear-claw",
+            {
+              height: 0.42,
+              diameterTop: 0,
+              diameterBottom: 0.1,
+              tessellation: 7,
+            },
+            this.scene,
+          );
+          claw.parent = this.visual;
+          claw.material = bone;
+          claw.position.set(x + clawIndex * 0.16, 0.14, z + 0.7);
+          claw.rotation.x = Math.PI / 2;
+          this.meshes.push(claw);
+        }
       }
-      this.root.scaling.setAll(1.48);
+      for (let index = 0; index < 3; index++) {
+        const scar = MeshBuilder.CreateBox(
+          "bear-face-scar",
+          { width: 0.06, height: 0.58, depth: 0.04 },
+          this.scene,
+        );
+        scar.parent = this.visual;
+        scar.material = blood;
+        scar.position.set(-0.35 + index * 0.13, 2.58, 2.37);
+        scar.rotation.z = -0.34;
+        this.meshes.push(scar);
+      }
+      this.root.scaling.setAll(1.38);
     } else {
       const spirit = this.material("ghost-spirit", "#A8D9E8"),
         voidMaterial = this.material("ghost-void", "#172C3A");

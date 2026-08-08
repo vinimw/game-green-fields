@@ -34,7 +34,10 @@ describe("Mini Tower upgrades", () => {
     expect(getTowerUpgradeCost(1)).toBe(2000);
     expect(getTowerUpgradeCost(2)).toBe(4000);
     expect(getTowerDamage(1)).toBe(DEFENSE_CONFIG.miniTower.damage);
-    expect(getTowerDamage(3)).toBe(DEFENSE_CONFIG.miniTower.damage * 100);
+    expect(getTowerDamage(3)).toBe(
+      DEFENSE_CONFIG.miniTower.damage *
+        DEFENSE_CONFIG.miniTower.damageMultiplierPerLevel ** 2,
+    );
     const state = tower();
     expect(purchaseTowerUpgrade(6000, state)).toMatchObject({
       success: true,

@@ -44,15 +44,17 @@ describe("Bear boss", () => {
         spawnPosition: { x: 0, z: 0 },
       });
     expect(
-      scene.meshes.filter((mesh) => mesh.name === "bear-horn"),
-    ).toHaveLength(2);
-    expect(
       scene.meshes.filter((mesh) => mesh.name === "bear-claw"),
-    ).toHaveLength(6);
+    ).toHaveLength(12);
     expect(
-      scene.meshes.filter((mesh) => mesh.name === "bear-back-spike"),
-    ).toHaveLength(5);
-    expect(bear.root.scaling.x).toBeCloseTo(1.48);
+      scene.meshes.filter((mesh) => mesh.name === "bear-paw"),
+    ).toHaveLength(4);
+    expect(
+      scene.meshes.filter((mesh) => mesh.name === "bear-face-scar"),
+    ).toHaveLength(3);
+    expect(scene.getMeshByName("bear-shoulders")).not.toBeNull();
+    expect(scene.getMeshByName("bear-jaw")).not.toBeNull();
+    expect(bear.root.scaling.x).toBeCloseTo(1.38);
     bear.dispose();
     scene.dispose();
     engine.dispose();

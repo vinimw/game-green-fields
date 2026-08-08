@@ -19,12 +19,6 @@ describe("autoplay tower upgrades", () => {
   });
   it("does not upgrade when the current damage has a safety margin", () =>
     expect(
-      new AutoplayTowerUpgradeSystem().decide(
-        1000,
-        10000,
-        [tower(2)],
-        true,
-        20,
-      ),
+      new AutoplayTowerUpgradeSystem().decide(1000, 10000, [tower(2)], true, 8),
     ).toBeNull());
 });
