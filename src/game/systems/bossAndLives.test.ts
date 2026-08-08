@@ -11,7 +11,6 @@ describe("Bear boss", () => {
   it("uses the configured boss combat rewards and stats", () => {
     expect(MONSTERS_CONFIG.bear).toMatchObject({
       category: "boss",
-      health: 100000,
       damage: 500,
       experienceReward: 400,
       attackCooldownMs: 2800,

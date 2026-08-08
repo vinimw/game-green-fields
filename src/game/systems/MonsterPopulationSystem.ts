@@ -12,6 +12,8 @@ type SpawnRule = {
   respawnDelayMs: number;
   spawnGroupSize: number;
   spawnWeight: number;
+  unlockPlayerLevel?: number;
+  maxPlayerLevel?: number;
 };
 type SpawnRules = Record<MonsterType, SpawnRule>;
 export const aliveCountByType = (
@@ -30,9 +32,14 @@ export const selectSpawnType = (
   counts: Record<MonsterType, number>,
   rules: SpawnRules,
   random: () => number = Math.random,
+  playerLevel = Number.MAX_SAFE_INTEGER,
 ): MonsterType | null => {
   const eligible = (Object.keys(rules) as MonsterType[]).filter(
-    (type) => rules[type].enabled && counts[type] < rules[type].maxAlive,
+    (type) =>
+      rules[type].enabled &&
+      counts[type] < rules[type].maxAlive &&
+      playerLevel >= (rules[type].unlockPlayerLevel ?? 1) &&
+      playerLevel <= (rules[type].maxPlayerLevel ?? Number.MAX_SAFE_INTEGER),
   );
   const totalWeight = eligible.reduce(
     (sum, type) => sum + rules[type].spawnWeight,
@@ -49,6 +56,7 @@ export const selectSpawnType = (
 export class MonsterPopulationSystem {
   readonly pendingRespawns: PendingRespawn[];
   private readonly rules: SpawnRules = MONSTER_SPAWN_CONFIG.monsters;
+  private playerLevel = () => 1;
   constructor(
     private monsters: Monster[],
     private positions: SpawnPositionService,
@@ -65,6 +73,9 @@ export class MonsterPopulationSystem {
   aliveByType(type: MonsterType) {
     return aliveCountByType(this.monsters, type);
   }
+  setPlayerLevelProvider(provider: () => number) {
+    this.playerLevel = provider;
+  }
   initialize() {
     const target = Math.round(
       MONSTER_SPAWN_CONFIG.maxMonsters *
@@ -77,6 +88,7 @@ export class MonsterPopulationSystem {
     }
   }
   onMonsterKilled(type: MonsterType) {
+    if (!this.isAvailableAtPlayerLevel(type)) return;
     this.pendingRespawns.push({
       type,
       remainingTimeMs:
@@ -85,10 +97,37 @@ export class MonsterPopulationSystem {
     });
   }
   update(deltaMs: number) {
+    let retiredMonsters = 0;
+    for (let index = this.monsters.length - 1; index >= 0; index--) {
+      const monster = this.monsters[index];
+      if (
+        monster?.state.alive &&
+        !this.isAvailableAtPlayerLevel(monster.state.type)
+      ) {
+        monster.dispose();
+        this.monsters.splice(index, 1);
+        retiredMonsters++;
+      }
+    }
+    if (retiredMonsters > 0) {
+      const targetPopulation = Math.round(
+        MONSTER_SPAWN_CONFIG.maxMonsters *
+          MONSTER_SPAWN_CONFIG.initialPopulationPercent,
+      );
+      let guard = MONSTER_SPAWN_CONFIG.maxSpawnAttempts;
+      while (this.totalAlive < targetPopulation && guard-- > 0) {
+        const type = this.selectType();
+        if (!type || this.spawn(type) === 0) break;
+      }
+    }
     for (const pending of this.pendingRespawns)
       pending.remainingTimeMs -= deltaMs;
     for (let i = this.pendingRespawns.length - 1; i >= 0; i--) {
       const pending = this.pendingRespawns[i];
+      if (pending && !this.isAvailableAtPlayerLevel(pending.type)) {
+        this.pendingRespawns.splice(i, 1);
+        continue;
+      }
       if (pending && pending.remainingTimeMs <= 0) {
         if (this.spawn(pending.type) > 0) this.pendingRespawns.splice(i, 1);
         else pending.remainingTimeMs = MONSTER_SPAWN_CONFIG.retryDelayMs;
@@ -104,6 +143,7 @@ export class MonsterPopulationSystem {
   }
   spawn(type: MonsterType) {
     if (!MONSTER_SPAWN_CONFIG.enabled) return 0;
+    if (!this.isAvailableAtPlayerLevel(type)) return 0;
     const count = allowedSpawnCount(
       this.totalAlive,
       this.aliveByType(type),
@@ -140,12 +180,22 @@ export class MonsterPopulationSystem {
         wailer: this.aliveByType("wailer"),
         ghost: this.aliveByType("ghost"),
         bear: this.aliveByType("bear"),
+        bat: this.aliveByType("bat"),
       },
       this.rules,
       this.random,
+      this.playerLevel(),
     );
   }
   snapshot() {
     return this.pendingRespawns.map((p) => ({ ...p }));
+  }
+  private isAvailableAtPlayerLevel(type: MonsterType) {
+    const level = this.playerLevel(),
+      rule = this.rules[type];
+    return (
+      level >= (rule.unlockPlayerLevel ?? 1) &&
+      level <= (rule.maxPlayerLevel ?? Number.MAX_SAFE_INTEGER)
+    );
   }
 }

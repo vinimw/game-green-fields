@@ -20,7 +20,8 @@ const migrateMonsterType = (type: string): MonsterType | null =>
       : type === "crawler" ||
           type === "wailer" ||
           type === "ghost" ||
-          type === "bear"
+          type === "bear" ||
+          type === "bat"
         ? type
         : null;
 

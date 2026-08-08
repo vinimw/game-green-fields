@@ -39,6 +39,7 @@ const areas = [{ id: "field", minX: -10, maxX: 10, minZ: -10, maxZ: 10 }],
   rules = {
     crawler: {
       enabled: true,
+      maxPlayerLevel: 29,
       maxAlive: 10,
       respawnDelayMs: 12000,
       spawnGroupSize: 2,
@@ -64,6 +65,14 @@ const areas = [{ id: "field", minX: -10, maxX: 10, minZ: -10, maxZ: 10 }],
       respawnDelayMs: 60000,
       spawnGroupSize: 1,
       spawnWeight: 0,
+    },
+    bat: {
+      enabled: true,
+      maxAlive: 12,
+      respawnDelayMs: 15000,
+      spawnGroupSize: 6,
+      spawnWeight: 25,
+      unlockPlayerLevel: 30,
     },
   };
 describe("spawn position", () => {
@@ -123,7 +132,7 @@ describe("horror population rules", () => {
   it("ignores types at their limit", () =>
     expect(
       selectSpawnType(
-        { crawler: 10, wailer: 0, ghost: 0, bear: 0 },
+        { crawler: 10, wailer: 0, ghost: 0, bear: 0, bat: 0 },
         rules,
         () => 0,
       ),
@@ -152,5 +161,41 @@ describe("horror population rules", () => {
     population.update(12000);
     expect(population.totalAlive).toBeGreaterThan(0);
     expect(created?.spawnPosition).toEqual({ x: 7, z: -7 });
+  });
+  it("unlocks a six-bat swarm at player level thirty", () => {
+    const monsters: Monster[] = [],
+      positions = {
+        findValidSpawnPosition: () => ({ x: 7, z: -7 }),
+      } as unknown as SpawnPositionService,
+      population = new MonsterPopulationSystem(
+        monsters,
+        positions,
+        (type, position) => fake(type, true, position),
+        () => ({ x: 0, z: 0 }),
+      );
+    population.setPlayerLevelProvider(() => 29);
+    expect(population.spawn("bat")).toBe(0);
+    population.setPlayerLevelProvider(() => 30);
+    expect(population.spawn("bat")).toBe(6);
+  });
+  it("removes level-one Crawlers and their respawns at level thirty", () => {
+    const monsters = [fake("crawler")],
+      positions = {
+        findValidSpawnPosition: () => ({ x: 7, z: -7 }),
+      } as unknown as SpawnPositionService,
+      population = new MonsterPopulationSystem(
+        monsters,
+        positions,
+        (type, position) => fake(type, true, position),
+        () => ({ x: 0, z: 0 }),
+      );
+    population.setPlayerLevelProvider(() => 29);
+    population.onMonsterKilled("crawler");
+    expect(population.pendingRespawns).toHaveLength(1);
+    population.setPlayerLevelProvider(() => 30);
+    population.update(1);
+    expect(population.aliveByType("crawler")).toBe(0);
+    expect(population.pendingRespawns).toHaveLength(0);
+    expect(population.spawn("crawler")).toBe(0);
   });
 });

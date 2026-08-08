@@ -33,6 +33,7 @@ export class Monster {
   private visibilityTimerMs = 3000;
   private smokePuffs: { mesh: Mesh; velocity: Vector3 }[] = [];
   private smokeMaterial?: StandardMaterial;
+  private wings: TransformNode[] = [];
   constructor(
     private scene: Scene,
     public state: MonsterState,
@@ -137,6 +138,67 @@ export class Monster {
         arm.position.set(x, 2.1, 0);
         arm.rotation.z = x > 0 ? -0.12 : 0.12;
         this.meshes.push(arm);
+      }
+    } else if (this.state.type === "bat") {
+      const skin = this.material("bat-skin", "#292138"),
+        wingMaterial = this.material("bat-wing-material", "#171321"),
+        eyes = this.material("bat-eyes", "#E94A42");
+      wingMaterial.backFaceCulling = false;
+      eyes.emissiveColor = Color3.FromHexString("#8C1717");
+      const body = MeshBuilder.CreateCapsule(
+        "bat-body",
+        { height: 1.15, radius: 0.3 },
+        this.scene,
+      );
+      this.add(body, 2.15, skin);
+      body.rotation.x = Math.PI / 2;
+      const head = MeshBuilder.CreateSphere(
+        "bat-head",
+        { diameter: 0.72, segments: 10 },
+        this.scene,
+      );
+      this.add(head, 2.3, skin);
+      head.position.z = 0.5;
+      for (const x of [-0.22, 0.22]) {
+        const ear = MeshBuilder.CreateCylinder(
+          "bat-ear",
+          {
+            height: 0.62,
+            diameterTop: 0,
+            diameterBottom: 0.2,
+            tessellation: 6,
+          },
+          this.scene,
+        );
+        ear.parent = this.visual;
+        ear.material = skin;
+        ear.position.set(x, 2.8, 0.48);
+        this.meshes.push(ear);
+        const eye = MeshBuilder.CreateSphere(
+          "bat-eye",
+          { diameter: 0.1, segments: 6 },
+          this.scene,
+        );
+        eye.parent = this.visual;
+        eye.material = eyes;
+        eye.position.set(x * 0.55, 2.4, 0.84);
+        this.meshes.push(eye);
+        const pivot = new TransformNode("bat-wing-pivot", this.scene);
+        pivot.parent = this.visual;
+        pivot.position.set(x > 0 ? 0.28 : -0.28, 2.25, 0);
+        const wing = MeshBuilder.CreateDisc(
+          "bat-wing",
+          { radius: 1.25, tessellation: 3, sideOrientation: Mesh.DOUBLESIDE },
+          this.scene,
+        );
+        wing.parent = pivot;
+        wing.material = wingMaterial;
+        wing.position.x = x > 0 ? 0.92 : -0.92;
+        wing.rotation.x = Math.PI / 2;
+        wing.rotation.y = x > 0 ? Math.PI / 2 : -Math.PI / 2;
+        wing.scaling.set(1.25, 0.7, 1);
+        this.meshes.push(wing);
+        this.wings.push(pivot);
       }
     } else if (this.state.type === "bear") {
       const fur = this.material("bear-fur", "#2B1D19"),
@@ -381,12 +443,18 @@ export class Monster {
       damageBase: (damage: number) => void;
     },
     defenses: DefenseTarget[] = [],
+    darknessActive = false,
   ) {
     if (paused || this.aiState === "DEAD") return;
     this.moving = false;
     this.cooldown = Math.max(0, this.cooldown - dt * 1000);
     this.wanderWaitMs = Math.max(0, this.wanderWaitMs - dt * 1000);
     const config = MONSTERS_CONFIG[this.state.type];
+    const movementSpeed =
+      config.movementSpeed *
+      (this.state.type === "bat" && darknessActive
+        ? MONSTERS_CONFIG.bat.darknessSpeedMultiplier
+        : 1);
     if (this.state.type === "bear") {
       this.wanderTarget = undefined;
       const distance = Math.hypot(
@@ -398,7 +466,7 @@ export class Monster {
         this.moveToward(
           player.root.position.x,
           player.root.position.z,
-          config.movementSpeed,
+          movementSpeed,
           dt,
         );
       if (this.aiState === "ATTACKING" && this.cooldown === 0) {
@@ -416,12 +484,7 @@ export class Monster {
       );
       this.aiState = distance <= config.attackRadius ? "ATTACKING" : "CHASING";
       if (this.aiState === "CHASING")
-        this.moveToward(
-          raid.position.x,
-          raid.position.z,
-          config.movementSpeed,
-          dt,
-        );
+        this.moveToward(raid.position.x, raid.position.z, movementSpeed, dt);
       if (this.aiState === "ATTACKING" && this.cooldown === 0) {
         raid.damageBase(config.damage);
         this.cooldown = config.attackCooldownMs;
@@ -463,7 +526,7 @@ export class Monster {
         this.moveToward(
           defense.position.x + (dx / length) * approachDistance,
           defense.position.z + (dz / length) * approachDistance,
-          config.movementSpeed,
+          movementSpeed,
           dt,
         );
       }
@@ -508,12 +571,19 @@ export class Monster {
     )
       this.aiState = "RETURNING";
     if (this.aiState === "IDLE")
-      this.updateWander(spawn, config.movementSpeed, dt);
+      this.updateWander(
+        spawn,
+        movementSpeed,
+        dt,
+        this.state.type === "bat"
+          ? MONSTERS_CONFIG.bat.wanderRadius
+          : GAME_CONFIG.monsterWander.radius,
+      );
     if (this.aiState === "CHASING")
-      this.moveToward(target.x, target.z, config.movementSpeed, dt);
+      this.moveToward(target.x, target.z, movementSpeed, dt);
     if (this.aiState === "RETURNING") {
       this.wanderTarget = undefined;
-      this.moveToward(spawn.x, spawn.z, config.movementSpeed, dt);
+      this.moveToward(spawn.x, spawn.z, movementSpeed, dt);
       if (spawnDistance < 0.15) {
         this.aiState = "IDLE";
         this.scheduleWanderPause();
@@ -526,12 +596,12 @@ export class Monster {
     this.finishUpdate(dt);
     return;
   }
-  private updateWander(spawn: Vec2, speed: number, dt: number) {
+  private updateWander(spawn: Vec2, speed: number, dt: number, radius: number) {
     if (!this.wanderTarget && this.wanderWaitMs === 0)
       this.wanderTarget =
         this.navigation?.findNearbyWalkable(
           spawn,
-          GAME_CONFIG.monsterWander.radius,
+          radius,
           GAME_CONFIG.monsterWander.maxTargetAttempts,
         ) ?? undefined;
     if (!this.wanderTarget) return;
@@ -566,13 +636,14 @@ export class Monster {
     this.navigation = navigation;
   }
   private moveToward(x: number, z: number, speed: number, dt: number) {
-    const waypoint = this.navigation
-      ? this.navigation.getNextWaypoint(
-          this.state.id,
-          { x: this.root.position.x, z: this.root.position.z },
-          { x, z },
-        )
-      : { x, z };
+    const waypoint =
+      this.navigation && this.state.type !== "bat"
+        ? this.navigation.getNextWaypoint(
+            this.state.id,
+            { x: this.root.position.x, z: this.root.position.z },
+            { x, z },
+          )
+        : { x, z };
     if (!waypoint) return;
     const dx = waypoint.x - this.root.position.x,
       dz = waypoint.z - this.root.position.z,
@@ -604,6 +675,13 @@ export class Monster {
         : 1;
       this.visual.scaling.x = distortion;
       this.visual.scaling.z = distortion;
+    } else if (this.state.type === "bat") {
+      const flap = Math.sin(this.animationTime * (this.moving ? 15 : 8));
+      this.visual.position.y = 0.18 + Math.sin(this.animationTime * 4) * 0.18;
+      this.visual.rotation.z = Math.sin(this.animationTime * 5) * 0.035;
+      this.wings.forEach((wing, index) => {
+        wing.rotation.z = (index === 0 ? 1 : -1) * (0.3 + flap * 0.72);
+      });
     } else if (this.state.type === "bear") {
       const pace = this.moving ? 5 : 1.5;
       this.visual.position.y =

@@ -291,6 +291,7 @@ export class WorldScene {
       }),
       save?.world.pendingRespawns ?? [],
     );
+    this.population.setPlayerLevelProvider(() => this.player.state.level);
     if (!save) this.population.initialize();
     this.camera = new GameCamera(this.scene, engine);
     this.coinPickups = new CoinPickupSystem(
@@ -453,6 +454,7 @@ export class WorldScene {
             damageBase: (damage) => this.damageBase(damage),
           },
           defenseTargets,
+          this.darkness.isDark,
         ),
       );
       this.defenses.update(dt, this.monsters, !this.darkness.isDark);

@@ -1,4 +1,4 @@
-export type MonsterType = "crawler" | "wailer" | "ghost" | "bear";
+export type MonsterType = "crawler" | "wailer" | "ghost" | "bear" | "bat";
 export const MONSTERS_CONFIG = {
   crawler: {
     level: 1,
@@ -45,7 +45,7 @@ export const MONSTERS_CONFIG = {
   bear: {
     category: "boss",
     level: 10,
-    health: 100000,
+    health: 10000,
     damage: 500,
     experienceReward: 400,
     coinDrop: { chance: 1, amount: 8000 },
@@ -54,6 +54,21 @@ export const MONSTERS_CONFIG = {
     detectionRadius: 1000,
     leashRadius: 1000,
     attackRadius: 2.2,
+  },
+  bat: {
+    level: 2,
+    unlockPlayerLevel: 30,
+    health: 70,
+    damage: 30,
+    experienceReward: 20,
+    coinDrop: { chance: 0.25, amount: 3 },
+    attackCooldownMs: 1100,
+    movementSpeed: 4.2,
+    darknessSpeedMultiplier: 2,
+    detectionRadius: 16,
+    leashRadius: 30,
+    wanderRadius: 30,
+    attackRadius: 1.1,
   },
 } as const;
 export const MONSTER_SPAWN_CONFIG = {
@@ -69,6 +84,7 @@ export const MONSTER_SPAWN_CONFIG = {
   monsters: {
     crawler: {
       enabled: true,
+      maxPlayerLevel: 29,
       maxAlive: 10,
       respawnDelayMs: 12000,
       spawnGroupSize: 2,
@@ -94,6 +110,14 @@ export const MONSTER_SPAWN_CONFIG = {
       respawnDelayMs: 60000,
       spawnGroupSize: 1,
       spawnWeight: 0,
+    },
+    bat: {
+      enabled: true,
+      maxAlive: 12,
+      respawnDelayMs: 15000,
+      spawnGroupSize: 6,
+      spawnWeight: 25,
+      unlockPlayerLevel: 30,
     },
   },
   debug: { showSpawnAreas: false },
