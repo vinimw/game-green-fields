@@ -92,6 +92,8 @@ import {
 import { grantTowerKillExperience } from "../defenses/TowerRewardSystem";
 import { BossSpawnSystem } from "../systems/BossSpawnSystem";
 import { consumePlayerLife } from "../systems/PlayerLivesSystem";
+import { LifeLossJumpscare } from "../ui/LifeLossJumpscare";
+import type { GameAudioSystem } from "../systems/GameAudioSystem";
 
 export class WorldScene {
   scene: Scene;
@@ -112,6 +114,8 @@ export class WorldScene {
   private coreMaterial: StandardMaterial;
   private playerLight?: PointLight;
   private gameOverTriggered = false;
+  private lifeLossTransition = false;
+  private lifeLossJumpscare: LifeLossJumpscare;
   private arrows: {
     root: TransformNode;
     start: Vector3;
@@ -144,6 +148,7 @@ export class WorldScene {
     engine: Engine,
     private ui: HTMLElement,
     private hud: Hud,
+    private audio: GameAudioSystem,
     save: SaveData | null,
     powerType?: PowerType,
     private onGameOver: () => void = () => {},
@@ -154,6 +159,7 @@ export class WorldScene {
     this.bossWarning = document.createElement("div");
     this.bossWarning.className = "boss-warning";
     this.ui.append(this.bossWarning);
+    this.lifeLossJumpscare = new LifeLossJumpscare(this.ui, this.audio);
     this.scene.clearColor = Color4.FromColor3(
       Color3.FromHexString(theme.environment.sky),
       1,
@@ -724,7 +730,7 @@ export class WorldScene {
     this.navigation.invalidateAll();
   }
   private damagePlayer(damage: number) {
-    if (this.gameOverTriggered) return;
+    if (this.gameOverTriggered || this.lifeLossTransition) return;
     this.player.state.currentHealth = Math.max(
       0,
       this.player.state.currentHealth - damage,
@@ -733,18 +739,23 @@ export class WorldScene {
     this.hud.toast(`-${damage} HP`);
     if (this.player.state.currentHealth === 0) {
       const lifeLoss = consumePlayerLife(this.player.state);
-      if (!lifeLoss.gameOver) {
+      this.lifeLossTransition = true;
+      this.paused = true;
+      this.bossWarning.classList.remove("active");
+      this.lifeLossJumpscare.play(() => {
+        this.lifeLossTransition = false;
+        if (lifeLoss.gameOver) {
+          this.gameOverTriggered = true;
+          this.onPlayerGameOver();
+          return;
+        }
         this.player.root.position.set(0, 0, 2);
         this.navigation.clear("autoplay-player");
+        this.paused = false;
         this.hud.toast(
           `You lost a life · ${lifeLoss.livesRemaining} remaining`,
         );
-      } else {
-        this.gameOverTriggered = true;
-        this.paused = true;
-        this.bossWarning.classList.remove("active");
-        this.onPlayerGameOver();
-      }
+      });
     }
   }
   private damageBase(damage: number) {
@@ -783,6 +794,7 @@ export class WorldScene {
   }
   private showArrowShot(target: Monster) {
     this.player.playArcherAttack();
+    this.audio.playBowShot();
     const start = new Vector3(
         this.player.root.position.x,
         1.4,

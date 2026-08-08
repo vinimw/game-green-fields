@@ -58,12 +58,27 @@ export const GAME_CONFIG = {
     },
   },
   effects: {
+    lifeLossJumpscare: {
+      imageUrl: "/assets/life-loss-jumpscare.png",
+      durationMs: 850,
+    },
     monsterDeathSmoke: {
       puffCount: 8,
       durationSeconds: 0.9,
       riseSpeed: 1.2,
       spread: 0.7,
     },
+  },
+  audio: {
+    ambient: {
+      volume: 0.275,
+      rootFrequency: 73.42,
+      pulseSpeed: 0.09,
+      melodyIntervalMs: 3800,
+      melodyNoteSeconds: 5.5,
+    },
+    evilLaugh: { volume: 0.3, durationSeconds: 0.72 },
+    bowShot: { volume: 0.22, durationSeconds: 0.13 },
   },
   base: {
     maxHealth: 300,

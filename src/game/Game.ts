@@ -11,6 +11,7 @@ import "../potions.css";
 import "../tower-upgrade.css";
 import "../boss.css";
 import "../survival.css";
+import "../life-loss-jumpscare.css";
 import { Engine } from "@babylonjs/core";
 import type { PowerType } from "./core/types";
 import { SaveSystem } from "./systems/SaveSystem";
@@ -22,12 +23,14 @@ import { TowerUpgradePanel } from "./ui/TowerUpgradePanel";
 import { VirtualJoystick } from "./ui/VirtualJoystick";
 import { WorldScene } from "./scenes/WorldScene";
 import { CheatCodeSystem } from "./systems/CheatCodeSystem";
+import { GameAudioSystem } from "./systems/GameAudioSystem";
 
 export class Game {
   private engine: Engine;
   private save = new SaveSystem();
   private world?: WorldScene;
   private cheats?: CheatCodeSystem;
+  private audio = new GameAudioSystem();
   constructor(
     canvas: HTMLCanvasElement,
     private ui: HTMLElement,
@@ -37,8 +40,11 @@ export class Game {
   start() {
     this.showTitle();
     addEventListener("resize", () => this.engine.resize());
+    addEventListener("pointerdown", () => this.audio.unlock(), { once: true });
+    addEventListener("keydown", () => this.audio.unlock(), { once: true });
   }
   private showTitle() {
+    this.audio.stopAmbient();
     this.ui.innerHTML = `<div class="title-screen"><div class="logo"><span>THE LAST BEACON</span><h1>GREEN FIELDS</h1><p>Dark Fantasy · Survival Horror · Base Defense</p></div><div class="title-actions">${this.save.hasSave() ? '<button data-start="continue">Continue</button>' : ""}<button data-start="new">New Game</button></div></div>`;
     this.ui
       .querySelector('[data-start="continue"]')
@@ -64,6 +70,8 @@ export class Game {
     this.cheats?.dispose();
     const data = continuing ? this.save.load() : null;
     this.ui.innerHTML = "";
+    this.audio.stopAmbient();
+    this.audio.startAmbient();
     let menu!: PauseMenu,
       shop!: ShopMenu,
       build!: BuildMenu,
@@ -105,6 +113,7 @@ export class Game {
       this.engine,
       this.ui,
       hud,
+      this.audio,
       data,
       powerType,
       () => this.showGameOver(),
@@ -178,6 +187,7 @@ export class Game {
     });
   }
   private showGameOver() {
+    this.audio.stopAmbient();
     this.cheats?.dispose();
     this.cheats = undefined;
     this.save.clear();
@@ -192,6 +202,7 @@ export class Game {
     });
   }
   private showPlayerGameOver() {
+    this.audio.stopAmbient();
     const hasSave = this.save.hasSave();
     const overlay = document.createElement("div");
     overlay.className = "overlay game-over";
