@@ -48,7 +48,7 @@ export const MONSTERS_CONFIG = {
   bear: {
     category: "boss",
     level: 10,
-    health: 10000,
+    health: 3000,
     damage: 500,
     experienceReward: 400,
     coinDrop: { chance: 1, amount: 8000 },

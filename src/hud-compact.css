@@ -1,0 +1,51 @@
+/* Compact player meters keep the center of the game view unobstructed. */
+.meters {
+  width: min(270px, 36vw);
+}
+
+.meters .level {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.meters label {
+  grid-template-columns: 28px 1fr;
+  margin: 3px;
+  font-size: 12px;
+}
+
+.meters label span {
+  font-size: 10px;
+  line-height: 11px;
+}
+
+.meters .bar {
+  height: 11px;
+  border-width: 1px;
+}
+
+.hunger-status {
+  top: 91px;
+  width: min(220px, 31vw);
+  font-size: 10px;
+}
+
+.hunger-status span {
+  margin-bottom: 2px;
+}
+
+.hunger-bar {
+  height: 8px;
+  border-width: 1px;
+}
+
+@media (max-width: 650px) {
+  .meters {
+    width: min(260px, 62vw);
+  }
+
+  .hunger-status {
+    top: 126px;
+    width: min(210px, 54vw);
+  }
+}

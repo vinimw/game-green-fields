@@ -41,6 +41,7 @@ export type MonsterState = {
   type: MonsterType;
   alive: boolean;
   health: number;
+  scaledToPlayerLevel?: number;
   position: Vec2;
   spawnPosition: Vec2;
 };

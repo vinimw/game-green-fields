@@ -12,6 +12,7 @@ import "../tower-upgrade.css";
 import "../boss.css";
 import "../survival.css";
 import "../life-loss-jumpscare.css";
+import "../hud-compact.css";
 import { Engine } from "@babylonjs/core";
 import type { PowerType } from "./core/types";
 import { SaveSystem } from "./systems/SaveSystem";

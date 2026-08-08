@@ -16,10 +16,7 @@ import {
   type Engine,
 } from "@babylonjs/core";
 import { GAME_CONFIG } from "../config/gameConfig";
-import {
-  MONSTERS_CONFIG,
-  MONSTER_SPAWN_CONFIG,
-} from "../config/monstersConfig";
+import { MONSTER_SPAWN_CONFIG } from "../config/monstersConfig";
 import type { PowerType, SaveData } from "../core/types";
 import { createPlayerState } from "../core/GameState";
 import { safeZones, spawnAreas, worldObjects } from "../world/worldData";
@@ -94,6 +91,8 @@ import { BossSpawnSystem } from "../systems/BossSpawnSystem";
 import { consumePlayerLife } from "../systems/PlayerLivesSystem";
 import { LifeLossJumpscare } from "../ui/LifeLossJumpscare";
 import type { GameAudioSystem } from "../systems/GameAudioSystem";
+import { StarvationSystem } from "../systems/StarvationSystem";
+import { scaledMonsterDamage } from "../systems/MonsterScalingSystem";
 
 export class WorldScene {
   scene: Scene;
@@ -134,6 +133,7 @@ export class WorldScene {
   private autoplayRecoveryMs = 0;
   private autoplayRecoveryDirection = { x: 0, z: 0 };
   private darkness = new DarknessCycleSystem();
+  private starvation = new StarvationSystem();
   private ground: Mesh;
   private defenses: DefenseManager;
   private placement: DefensePlacementSystem;
@@ -274,7 +274,11 @@ export class WorldScene {
       monster.setNavigation(navigation);
       monster.meshes.forEach((mesh) => shadow.addShadowCaster(mesh));
     });
-    const factory = new MonsterFactory(this.scene, GAME_CONFIG.mapId);
+    const factory = new MonsterFactory(
+      this.scene,
+      GAME_CONFIG.mapId,
+      () => this.player.state.level,
+    );
     const positions = new SpawnPositionService(
       spawnAreas,
       safeZones,
@@ -343,7 +347,9 @@ export class WorldScene {
           0,
           ...this.monsters
             .filter((monster) => monster.state.alive)
-            .map((monster) => MONSTERS_CONFIG[monster.state.type].damage),
+            .map((monster) =>
+              scaledMonsterDamage(monster.state.type, this.player.state.level),
+            ),
         ),
         allocated = this.autoplayEnabled
           ? distributeAutoplayStats(this.player.state, strongestThreat)
@@ -432,6 +438,11 @@ export class WorldScene {
       if (lanternToggleRequested) this.toggleLantern();
       if (lanternRefillRequested) this.refillLantern();
       if (steakRequested) this.eatRawSteak();
+      const starvationDamage = this.starvation.update(
+        this.player.state.hunger,
+        dt,
+      );
+      if (starvationDamage > 0) this.damagePlayer(starvationDamage);
       if (drainLantern(this.player.state, dt))
         this.hud.toast("Lantern ran out of gas");
       const darknessTransition = this.darkness.update(dt * 1000);

@@ -34,6 +34,7 @@ export const GAME_CONFIG = {
     },
   },
   experience: { multiplierPerLevel: 100 },
+  monsterScaling: { healthAndDamagePerPlayerLevelPercent: 10 },
   camera: { orthoSize: 15, height: 16, distance: 14 },
   pickups: {
     coin: {
@@ -50,6 +51,7 @@ export const GAME_CONFIG = {
       lossPerAttack: 0.5,
       steakRestore: 30,
       autoplayEatThreshold: 35,
+      starvationDamagePerSecond: 10,
     },
     rawSteak: {
       maxInventory: 30,

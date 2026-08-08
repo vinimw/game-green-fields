@@ -14,6 +14,10 @@ import { DEFENSE_CONFIG } from "../config/defenseConfig";
 import type { MonsterNavigationSystem } from "../systems/MonsterNavigationSystem";
 import type { DefenseTarget } from "../defenses/DefenseManager";
 import type { Player } from "./Player";
+import {
+  scaledMonsterDamage,
+  scaledMonsterHealth,
+} from "../systems/MonsterScalingSystem";
 export type MonsterAIState =
   "IDLE" | "CHASING" | "ATTACKING" | "RETURNING" | "DEAD";
 export class Monster {
@@ -446,6 +450,7 @@ export class Monster {
     darknessActive = false,
   ) {
     if (paused || this.aiState === "DEAD") return;
+    this.syncPlayerLevel(player.state.level);
     this.moving = false;
     this.cooldown = Math.max(0, this.cooldown - dt * 1000);
     this.wanderWaitMs = Math.max(0, this.wanderWaitMs - dt * 1000);
@@ -470,7 +475,7 @@ export class Monster {
           dt,
         );
       if (this.aiState === "ATTACKING" && this.cooldown === 0) {
-        damagePlayer(config.damage);
+        damagePlayer(scaledMonsterDamage(this.state.type, player.state.level));
         this.cooldown = config.attackCooldownMs;
       }
       this.finishUpdate(dt);
@@ -486,7 +491,7 @@ export class Monster {
       if (this.aiState === "CHASING")
         this.moveToward(raid.position.x, raid.position.z, movementSpeed, dt);
       if (this.aiState === "ATTACKING" && this.cooldown === 0) {
-        raid.damageBase(config.damage);
+        raid.damageBase(scaledMonsterDamage(this.state.type, player.state.level));
         this.cooldown = config.attackCooldownMs;
       }
       this.finishUpdate(dt);
@@ -531,7 +536,7 @@ export class Monster {
         );
       }
       if (this.aiState === "ATTACKING" && this.cooldown === 0) {
-        defense.damage(config.damage);
+        defense.damage(scaledMonsterDamage(this.state.type, player.state.level));
         this.cooldown = config.attackCooldownMs;
       }
       this.finishUpdate(dt);
@@ -590,11 +595,22 @@ export class Monster {
       }
     }
     if (this.aiState === "ATTACKING" && this.cooldown === 0) {
-      damagePlayer(config.damage);
+      damagePlayer(scaledMonsterDamage(this.state.type, player.state.level));
       this.cooldown = config.attackCooldownMs;
     }
     this.finishUpdate(dt);
     return;
+  }
+  private syncPlayerLevel(playerLevel: number) {
+    const previousLevel = this.state.scaledToPlayerLevel ?? 1;
+    if (previousLevel === playerLevel) return;
+    const previousMaximum = scaledMonsterHealth(this.state.type, previousLevel);
+    const nextMaximum = scaledMonsterHealth(this.state.type, playerLevel);
+    this.state.health = Math.min(
+      nextMaximum,
+      this.state.health + Math.max(0, nextMaximum - previousMaximum),
+    );
+    this.state.scaledToPlayerLevel = playerLevel;
   }
   private updateWander(spawn: Vec2, speed: number, dt: number, radius: number) {
     if (!this.wanderTarget && this.wanderWaitMs === 0)
