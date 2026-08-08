@@ -23,7 +23,7 @@ export class CombatSystem {
     this.cooldown = Math.max(0, this.cooldown - dt * 1000);
   }
   attackTarget(target: Monster) {
-    if (this.cooldown > 0 || !target.state.alive) return false;
+    if (this.cooldown > 0 || !target.isTargetable) return false;
     const dx = target.root.position.x - this.player.root.position.x,
       dz = target.root.position.z - this.player.root.position.z,
       distance = Math.hypot(dx, dz);

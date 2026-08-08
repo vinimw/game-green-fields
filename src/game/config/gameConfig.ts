@@ -4,9 +4,12 @@ export const GAME_CONFIG = {
   player: {
     initialLevel: 1,
     initialCoins: 10000, // 0
+    initialHealthPotions: 0,
+    initialGasCanisters: 0,
+    initialLanternFuel: 0,
     maxLevel: 100,
     initialPowerType: "magic",
-    initialStats: { strength: 1, agility: 1, intelligence: 1, vitality: 1 },
+    initialStats: { strength: 1, agility: 30, intelligence: 1, vitality: 1 },
     baseHealth: 100,
     healthPerVitality: 10,
     healthPerLevel: 50,
@@ -29,13 +32,6 @@ export const GAME_CONFIG = {
   experience: { multiplierPerLevel: 100 },
   camera: { orthoSize: 15, height: 16, distance: 14 },
   pickups: {
-    heart: {
-      dropChance: 0.3,
-      healthRestore: 30,
-      pickupRadius: 1.25,
-      hoverHeight: 0.8,
-      rotationSpeed: 2.5,
-    },
     coin: {
       pickupRadius: 1.25,
       hoverHeight: 0.55,
@@ -50,6 +46,8 @@ export const GAME_CONFIG = {
   },
   shop: {
     baseHealthRepair: { cost: 2, healthRestore: 100 },
+    healthPotion: { cost: 10, healthRestore: 300, maxInventory: 100 },
+    lanternGas: { cost: 10, maxInventory: 100, tankCapacity: 100, consumptionPerSecond: 3 },
   },
   world: { size: 60 },
   monsterWander: {
@@ -61,9 +59,14 @@ export const GAME_CONFIG = {
   },
   autoplay: {
     criticalHealthPercent: 35,
-    heartMinimumMissingHealth: 15,
     safeHealthDamageMultiplier: 2.5,
     targetRefreshMs: 500,
+  },
+  cheats: {
+    enabled: true,
+    moneyCode: "money",
+    moneyRewardCoins: 10000,
+    inputTimeoutMs: 2000,
   },
   saveKey: "simple-rpg-save:v1",
 } as const;
