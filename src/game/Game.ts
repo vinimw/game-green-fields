@@ -13,6 +13,7 @@ import "../boss.css";
 import "../survival.css";
 import "../life-loss-jumpscare.css";
 import "../hud-compact.css";
+import "../mage.css";
 import { Engine } from "@babylonjs/core";
 import type { PowerType } from "./core/types";
 import { SaveSystem } from "./systems/SaveSystem";
@@ -109,6 +110,8 @@ export class Game {
       () => this.world?.refillLantern(),
       () => this.world?.toggleLantern(),
       () => this.world?.eatRawSteak(),
+      () => this.world?.toggleMageSpell(),
+      () => this.world?.castMageAtNearest(),
     );
     this.world = new WorldScene(
       this.engine,
@@ -150,7 +153,7 @@ export class Game {
       () => this.world!.buyBaseHealth(),
       () => this.world!.buyHealthPotion(),
       () => this.world!.buyGasCanister(),
-      () => this.world!.buyArcherWeapon(),
+      () => this.world!.buyClassWeapon(),
       () => this.world!.buyArcherBoots(),
       () => {
         shop.toggle(false);

@@ -94,6 +94,9 @@ import { consumePlayerLife } from "../systems/PlayerLivesSystem";
 import { LifeLossJumpscare } from "../ui/LifeLossJumpscare";
 import type { GameAudioSystem } from "../systems/GameAudioSystem";
 import { StarvationSystem } from "../systems/StarvationSystem";
+import { MageCombatSystem } from "../systems/MageCombatSystem";
+import {currentMageStaff,nextMageStaff,purchaseMageStaff} from "../systems/MageStaffSystem";
+import {getStaff,MAGE_CONFIG,toggleMageSpell} from "../config/mageConfig";
 import { scaledMonsterDamage } from "../systems/MonsterScalingSystem";
 
 export class WorldScene {
@@ -103,6 +106,7 @@ export class WorldScene {
   camera: GameCamera;
   input = new InputSystem();
   combat: CombatSystem;
+  mageCombat: MageCombatSystem;
   paused = false;
   private obstacles: SpawnObstacle[] = [];
   private staticObstacleCount = 0;
@@ -252,6 +256,10 @@ export class WorldScene {
     const navigation = this.navigation,
       state = save?.player ?? createPlayerState(powerType);
     this.player = new Player(this.scene, state);
+    if (import.meta.env.DEV && MAGE_CONFIG.debug.showMageAttackRange && state.powerType === "magic") {
+      const points=Array.from({length:49},(_,index)=>{const angle=index/48*Math.PI*2;return new Vector3(Math.cos(angle)*MAGE_CONFIG.combat.range,.04,Math.sin(angle)*MAGE_CONFIG.combat.range);}),range=MeshBuilder.CreateLines("mage-attack-range",{points},this.scene) as LinesMesh;
+      range.color=Color3.FromHexString("#65dff5");range.parent=this.player.root;
+    }
     this.player.root
       .getChildMeshes()
       .forEach((mesh) => shadow.addShadowCaster(mesh));
@@ -368,6 +376,14 @@ export class WorldScene {
       handleMonsterKilled,
       handleLevelUp,
     );
+    this.mageCombat = new MageCombatSystem(
+      this.scene,
+      this.player,
+      () => this.monsters,
+      (text,x,z,critical)=>this.damageText(text,x,z,critical),
+      handleMonsterKilled,
+      handleLevelUp,
+    );
     this.defenses = new DefenseManager(
       this.scene,
       save?.world.defenses ?? [],
@@ -417,13 +433,7 @@ export class WorldScene {
           monster.isTargetable &&
           monster.meshes.some((mesh) => mesh === pick.pickedMesh),
       );
-      if (
-        target &&
-        this.canPlayerSee(target) &&
-        this.combat.attackTarget(target) &&
-        this.player.state.powerType === "archer"
-      )
-        this.showArrowShot(target);
+      if (target && this.canPlayerSee(target)) this.attackPlayerTarget(target);
     };
     this.debug = document.createElement("pre");
     this.debug.className = "debug";
@@ -467,6 +477,7 @@ export class WorldScene {
           : this.input.direction();
       this.player.update(direction, dt, (x, z) => this.blocked(x, z));
       this.combat.update(dt);
+      this.mageCombat.update(dt);
       const transition = this.baseRaid.update(dt * 1000);
       if (transition === "started")
         this.hud.toast("⚠ Monsters are attacking the base!");
@@ -566,24 +577,14 @@ export class WorldScene {
       const target = visibleMonsters.find(
         (monster) => monster.state.id === decision.monsterId,
       );
-      if (
-        target &&
-        this.combat.attackTarget(target) &&
-        this.player.state.powerType === "archer"
-      )
-        this.showArrowShot(target);
+      if (target) this.attackPlayerTarget(target);
       return this.resolveAutoplayMovement({ x: 0, z: 0 }, dt);
     }
     if (decision.mode === "kite" && decision.monsterId) {
       const target = visibleMonsters.find(
         (monster) => monster.state.id === decision.monsterId,
       );
-      if (
-        target &&
-        this.combat.attackTarget(target) &&
-        this.player.state.powerType === "archer"
-      )
-        this.showArrowShot(target);
+      if (target) this.attackPlayerTarget(target);
     }
     if (!decision.destination)
       return this.resolveAutoplayMovement({ x: 0, z: 0 }, dt);
@@ -912,6 +913,29 @@ export class WorldScene {
       ),
     });
   }
+  private attackPlayerTarget(target: Monster) {
+    if (this.player.state.powerType === "magic")
+      return this.mageCombat.cast(target);
+    const attacked = this.combat.attackTarget(target);
+    if (attacked && this.player.state.powerType === "archer")
+      this.showArrowShot(target);
+    return attacked;
+  }
+  castMageAtNearest() {
+    if (this.player.state.powerType !== "magic" || this.paused) return false;
+    const target = this.monsters
+      .filter((monster) => monster.isTargetable && this.canPlayerSee(monster))
+      .sort((a,b)=>Vector3.Distance(this.player.root.position,a.root.position)-Vector3.Distance(this.player.root.position,b.root.position))[0];
+    if (!target) { this.hud.toast("No target in sight"); return false; }
+    if (!this.attackPlayerTarget(target)) { this.hud.toast("Target is out of range"); return false; }
+    return true;
+  }
+  toggleMageSpell() {
+    if (this.player.state.powerType !== "magic") return;
+    this.player.state.selectedSpell=toggleMageSpell(this.player.state.selectedSpell);
+    const spell=MAGE_CONFIG.spells[this.player.state.selectedSpell];
+    this.hud.toast(spell.name.toUpperCase(),MAGE_CONFIG.spellFeedbackMs);
+  }
   private updateArrowShots(dt: number) {
     for (let index = this.arrows.length - 1; index >= 0; index--) {
       const arrow = this.arrows[index];
@@ -944,6 +968,10 @@ export class WorldScene {
       .filter((monster) => monster.state.alive)
       .map((monster) => `${monster.state.type}: ${monster.aiState}`)
       .join("\n")}`;
+    if (player.powerType === "magic") {
+      const staff = getStaff(player.staffLevel);
+      this.debug.textContent += `\nClass Mage\nSpell ${MAGE_CONFIG.spells[player.selectedSpell].name}\nMagic Damage ${powerDamage("magic", player.stats)}\nIntelligence ${player.stats.intelligence}\nStaff ${staff.name}\nStaff Level ${staff.level}\nAoE ${staff.aoeRadius}\nRange ${MAGE_CONFIG.combat.range}`;
+    }
   }
   private updateAutoplayTowerUpgrades(dt: number) {
     if (!this.autoplayEnabled || this.paused) return;
@@ -1053,6 +1081,8 @@ export class WorldScene {
         : null,
       currentSpeedBonusPercent: currentBonuses.totalBonusPercent,
       nextSpeedBonusPercent: nextBonuses?.totalBonusPercent ?? null,
+      currentStaff: currentMageStaff(player),
+      nextStaff: nextMageStaff(player),
     };
   }
   buyHealthPotion() {
@@ -1102,6 +1132,12 @@ export class WorldScene {
     const result = purchaseArcherWeapon(this.player.state);
     if (result.success)
       this.player.updateArcherWeaponVisual(this.player.state.archerWeaponLevel);
+    return result.message;
+  }
+  buyClassWeapon() {
+    if (this.player.state.powerType !== "magic") return this.buyArcherWeapon();
+    const result=purchaseMageStaff(this.player.state);
+    if(result.success)this.player.updateMageStaffVisual(this.player.state.staffLevel);
     return result.message;
   }
   buyArcherBoots() {

@@ -4,6 +4,7 @@ import type { PlayerState, Vec2 } from "../core/types";
 import { attackRange, maxHealth } from "./StatsSystem";
 import { shouldAutoplayEat } from "./HungerSystem";
 import { scaledMonsterDamage } from "./MonsterScalingSystem";
+import { MAGE_CONFIG } from "../config/mageConfig";
 
 export type AutoplayMonster = {
   id: string;
@@ -202,6 +203,24 @@ export class AutoplaySystem {
       return bossDistance <= attackRange(player.powerType)
         ? { mode: "attack", destination: boss.position, monsterId: boss.id }
         : { mode: "hunt", destination: boss.position, monsterId: boss.id };
+    }
+    if (
+      player.powerType === "magic" &&
+      closestMonster &&
+      distance(position, closestMonster.position) <=
+        MAGE_CONFIG.combat.autoplayRetreatDistance
+    ) {
+      const dx = position.x - closestMonster.position.x,
+        dz = position.z - closestMonster.position.z,
+        length = Math.hypot(dx, dz) || 1;
+      return {
+        mode: "kite",
+        monsterId: closestMonster.id,
+        destination: {
+          x: position.x + (dx / length) * GAME_CONFIG.autoplay.bossRetreatStep,
+          z: position.z + (dz / length) * GAME_CONFIG.autoplay.bossRetreatStep,
+        },
+      };
     }
     if (context?.raidActive) {
       const target = alive.reduce<AutoplayMonster | undefined>(

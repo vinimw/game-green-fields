@@ -9,6 +9,7 @@ import {
 } from "../config/archerBootsConfig";
 import { MONSTERS_CONFIG, type MonsterType } from "../config/monstersConfig";
 import type { PlayerState, SaveData } from "../core/types";
+import { getStaff, MAGE_CONFIG, MAGE_STAFFS } from "../config/mageConfig";
 
 type LegacyPlayer = Partial<PlayerState> & { gold?: number };
 type LegacyMonster = { type: string; health: number };
@@ -75,6 +76,8 @@ export class SaveSystem {
       if (typeof legacy.archerWeaponLevel !== "number")
         legacy.archerWeaponLevel = 1;
       if (typeof legacy.bootsLevel !== "number") legacy.bootsLevel = 0;
+      if (legacy.selectedSpell !== "ice-lance" && legacy.selectedSpell !== "lightning-lance") legacy.selectedSpell = MAGE_CONFIG.initialSpell;
+      if (typeof legacy.staffLevel !== "number") legacy.staffLevel = MAGE_CONFIG.initialStaffLevel;
       const player = data.player;
       player.lives = Math.max(
         0,
@@ -118,11 +121,14 @@ export class SaveSystem {
         0,
         Math.min(MAX_ARCHER_BOOTS_LEVEL, player.bootsLevel),
       );
+      player.staffLevel = Math.max(1,Math.min(MAGE_STAFFS.length,Math.floor(player.staffLevel)));
       if (player.powerType === "archer") {
         player.equipment.weapon =
           getArcherWeapon(player.archerWeaponLevel)?.id ?? "training-bow";
-        player.equipment.boots = getArcherBoots(player.bootsLevel)?.id ?? null;
       }
+      if (player.powerType === "archer" || player.powerType === "magic")
+        player.equipment.boots = getArcherBoots(player.bootsLevel)?.id ?? null;
+      if (player.powerType === "magic") player.equipment.weapon=getStaff(player.staffLevel).id;
       data.world.monsters = (
         data.world.monsters as unknown as LegacyMonster[]
       ).flatMap((monster) => {

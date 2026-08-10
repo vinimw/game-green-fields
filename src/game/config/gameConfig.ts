@@ -2,7 +2,7 @@ export const GAME_CONFIG = {
   debug: true,
   mapId: "green-fields",
   player: {
-    initialLevel: 30,
+    initialLevel: 1,
     initialCoins: 10000, // 0
     initialHealthPotions: 0,
     initialGasCanisters: 0,
@@ -85,8 +85,8 @@ export const GAME_CONFIG = {
   base: {
     maxHealth: 300,
     position: { x: 0, z: 0 },
-    raidIntervalMs: 30000, //60000
-    raidDurationMs: 20000, //30000
+    raidIntervalMs: 60000, //60000
+    raidDurationMs: 10000, //30000
   },
   shop: {
     baseHealthRepair: { cost: 2, healthRestore: 100 },
@@ -135,7 +135,7 @@ export const GAME_CONFIG = {
   cheats: {
     enabled: true,
     moneyCode: "money",
-    moneyRewardCoins: 10000,
+    moneyRewardCoins: 100000,
     inputTimeoutMs: 2000,
   },
   saveKey: "simple-rpg-save:v1",

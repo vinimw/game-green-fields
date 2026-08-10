@@ -6,6 +6,7 @@ import {
 } from "@babylonjs/core";
 import { describe, expect, it } from "vitest";
 import { DEFENSE_CONFIG } from "../config/defenseConfig";
+import { scaledMonsterDamage } from "../systems/MonsterScalingSystem";
 import { createPlayerState } from "../core/GameState";
 import type { DefenseState } from "../core/types";
 import { Monster } from "../entities/Monster";
@@ -127,7 +128,7 @@ describe("monster Defense targeting", () => {
         },
       ],
     );
-    expect(towerHealth).toBe(278);
+    expect(towerHealth).toBe(300-scaledMonsterDamage("crawler",player.state.level));
     expect(playerDamage).toBe(0);
     monster.dispose();
     scene.dispose();
@@ -168,7 +169,7 @@ describe("monster Defense targeting", () => {
         },
       ],
     );
-    expect(coreDamage).toBe(22);
+    expect(coreDamage).toBe(scaledMonsterDamage("crawler",player.state.level));
     expect(towerHealth).toBe(300);
     monster.dispose();
     scene.dispose();

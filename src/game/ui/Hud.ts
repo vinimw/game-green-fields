@@ -1,6 +1,7 @@
 import type { BaseState, PlayerState } from "../core/types";
 import { maxHealth } from "../systems/StatsSystem";
 import { requiredXP } from "../systems/ExperienceSystem";
+import { MAGE_CONFIG } from "../config/mageConfig";
 
 export class Hud {
   el: HTMLElement;
@@ -15,10 +16,21 @@ export class Hud {
     onGas: () => void,
     onLantern: () => void,
     onSteak: () => void,
+    onSpell: () => void,
+    onMageAttack: () => void,
   ) {
     this.el = document.createElement("div");
     this.el.className = "hud";
     this.el.innerHTML = `<div class="top-actions"><button class="menu-btn">☰ Menu</button><button class="character-btn" aria-label="Open character status" title="Character status">👤</button><button class="shop-btn" aria-label="Open shop" title="Shop">🛒</button><button class="build-btn" aria-label="Build defenses" title="Build defenses">🏰 BUILD</button><div class="coin-total" aria-label="Coins">● <span>0</span></div><label class="autoplay-switch"><input type="checkbox"><span></span><b>Autoplay</b></label></div><div class="item-slots"><button class="potion-slot" aria-label="Use Health Potion" title="Use Health Potion (C)"><span class="item-icon">🧪</span><b class="potion-count">0</b><kbd>C</kbd></button><button class="gas-slot" aria-label="Refill Lantern" title="Refill Lantern (Q)"><span class="item-icon">⛽</span><b class="gas-count">0</b><kbd>Q</kbd></button><button class="lantern-slot" aria-label="Toggle Lantern" title="Toggle Lantern (Space)"><span class="item-icon">🔦</span><b class="lantern-fuel">0</b><kbd>SPACE</kbd></button></div><div class="meters"><b class="level"></b><label>HP <span class="hptext"></span><i class="bar hp"><i></i></i></label><label>XP <span class="xptext"></span><i class="bar xp"><i></i></i></label></div><div class="base-status"><b class="raid-label"></b><span class="base-health"></span><i class="base-bar"><i></i></i></div><div class="toast"></div>`;
+    const mageActions = document.createElement("div");
+    mageActions.className = "mage-actions hidden";
+    mageActions.innerHTML = `<button class="mage-attack" aria-label="Cast selected spell"><b>CAST</b><span>✨</span></button><button class="mage-spell" aria-label="Switch Mage spell"><span>❄️</span><b>ICE LANCE</b></button>`;
+    const actionDock = document.createElement("div");
+    actionDock.className = "bottom-right-controls";
+    const itemSlots = this.el.querySelector(".item-slots");
+    if (itemSlots) actionDock.append(itemSlots);
+    actionDock.append(mageActions);
+    this.el.append(actionDock);
     const lives = document.createElement("div");
     lives.className = "lives-display";
     lives.setAttribute("aria-label", "Player lives");
@@ -46,6 +58,8 @@ export class Hud {
       .querySelector(".lantern-slot")
       ?.addEventListener("click", onLantern);
     this.el.querySelector(".steak-slot")?.addEventListener("click", onSteak);
+    this.el.querySelector(".mage-spell")?.addEventListener("click", onSpell);
+    this.el.querySelector(".mage-attack")?.addEventListener("click", onMageAttack);
     this.el
       .querySelector<HTMLInputElement>(".autoplay-switch input")
       ?.addEventListener("change", (event) =>
@@ -65,6 +79,11 @@ export class Hud {
     this.set(".lantern-fuel", String(Math.ceil(player.lanternFuel)));
     this.set(".steak-count", String(player.rawSteaks));
     this.set(".hunger-text", `${player.hunger.toFixed(1)} / 100`);
+    const mage = player.powerType === "magic",
+      spell = MAGE_CONFIG.spells[player.selectedSpell];
+    this.el.querySelector(".mage-actions")?.classList.toggle("hidden", !mage);
+    this.set(".mage-spell span", spell.icon);
+    this.set(".mage-spell b", spell.name.toUpperCase());
     this.el
       .querySelector(".potion-slot")
       ?.classList.toggle("empty", player.healthPotions === 0);
@@ -95,11 +114,11 @@ export class Hud {
     this.set(".base-health", `Core ${base.currentHealth} / ${maximumHealth}`);
     this.width(".base-bar i", (base.currentHealth / maximumHealth) * 100);
   }
-  toast(value: string) {
+  toast(value: string, durationMs = 1200) {
     const element = this.el.querySelector(".toast") as HTMLElement;
     element.textContent = value;
     element.classList.add("show");
-    setTimeout(() => element.classList.remove("show"), 1200);
+    setTimeout(() => element.classList.remove("show"), durationMs);
   }
   private set(selector: string, value: string) {
     const element = this.el.querySelector(selector);
