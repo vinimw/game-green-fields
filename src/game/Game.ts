@@ -14,6 +14,7 @@ import "../survival.css";
 import "../life-loss-jumpscare.css";
 import "../hud-compact.css";
 import "../mage.css";
+import "../mage-inventory.css";
 import { Engine } from "@babylonjs/core";
 import type { PowerType } from "./core/types";
 import { SaveSystem } from "./systems/SaveSystem";
@@ -26,6 +27,7 @@ import { VirtualJoystick } from "./ui/VirtualJoystick";
 import { WorldScene } from "./scenes/WorldScene";
 import { CheatCodeSystem } from "./systems/CheatCodeSystem";
 import { GameAudioSystem } from "./systems/GameAudioSystem";
+import {MageAbilityMenu} from "./ui/MageAbilityMenu";
 
 export class Game {
   private engine: Engine;
@@ -33,6 +35,7 @@ export class Game {
   private world?: WorldScene;
   private cheats?: CheatCodeSystem;
   private audio = new GameAudioSystem();
+  private mageAbilityMenu?:MageAbilityMenu;
   constructor(
     canvas: HTMLCanvasElement,
     private ui: HTMLElement,
@@ -69,6 +72,7 @@ export class Game {
       ?.addEventListener("click", () => this.showTitle());
   }
   private launch(continuing: boolean, powerType?: PowerType) {
+    this.mageAbilityMenu?.dispose();
     this.cheats?.dispose();
     const data = continuing ? this.save.load() : null;
     this.ui.innerHTML = "";
@@ -111,7 +115,7 @@ export class Game {
       () => this.world?.toggleLantern(),
       () => this.world?.eatRawSteak(),
       () => this.world?.toggleMageSpell(),
-      () => this.world?.castMageAtNearest(),
+      () => this.world?.castMageAtAim(),
     );
     this.world = new WorldScene(
       this.engine,
@@ -123,6 +127,7 @@ export class Game {
       () => this.showGameOver(),
       () => this.showPlayerGameOver(),
     );
+    this.mageAbilityMenu=new MageAbilityMenu(this.ui,this.world.player.state,paused=>{if(this.world)this.world.paused=paused;},text=>hud.toast(text));
     towerUpgrade = new TowerUpgradePanel(
       this.ui,
       (id) => this.world!.getTowerUpgradeState(id),

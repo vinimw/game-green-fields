@@ -8,6 +8,7 @@ export type ArcherWeaponConfig = {
   image: string;
   model: string;
   damageBonusPercent: number;
+  attackSpeedBonusPercent: number;
   price: number;
   placeholderColor: string;
 };
@@ -26,6 +27,7 @@ const bow = (
   image: `/assets/items/bows/${id}.png`,
   model: `/assets/models/weapons/${id}.glb`,
   damageBonusPercent: level * 2,
+  attackSpeedBonusPercent: level * 5,
   price,
   placeholderColor,
 });

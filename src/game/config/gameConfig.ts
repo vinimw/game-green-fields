@@ -33,10 +33,22 @@ export const GAME_CONFIG = {
       arrowProjectileSpeed: 14,
     },
   },
+  rangedCombat: {
+    aim: { validColor: "#55ef82", invalidColor: "#d83b3b", opacity: 0.55 },
+    archer: { castRange: 15, hitRadius: 1 },
+    healer: { castRange: 2.4, hitRadius: 1 },
+    debug: {
+      showAimPosition: true,
+      showAttackRange: false,
+      showHitRadius: false,
+      showMageAoE: false,
+    },
+  },
   experience: { multiplierPerLevel: 100 },
   monsterScaling: { healthAndDamagePerPlayerLevelPercent: 10 },
   camera: { orthoSize: 15, height: 16, distance: 14 },
   pickups: {
+    skillBook: { dropChance: 0.01, pickupRadius: 1.25, lifetimeMs: 30000 },
     coin: {
       pickupRadius: 1.25,
       hoverHeight: 0.55,

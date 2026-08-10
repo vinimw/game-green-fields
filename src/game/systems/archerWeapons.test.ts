@@ -5,11 +5,12 @@ import { createPlayerState } from '../core/GameState';
 import type { SaveData } from '../core/types';
 import { SaveSystem } from './SaveSystem';
 import { purchaseArcherWeapon } from './ArcherWeaponSystem';
-import { powerDamage } from './StatsSystem';
+import { attackCooldownMs,powerDamage } from './StatsSystem';
 
 describe('archer weapon progression', () => {
   it('defines all 12 ordered weapon levels', () => expect(ARCHER_WEAPONS.map(value => value.level)).toEqual([1,2,3,4,5,6,7,8,9,10,11,12]));
   it('defines the expected bonuses at the progression limits', () => { expect(getArcherWeapon(1)?.damageBonusPercent).toBe(2); expect(getArcherWeapon(12)?.damageBonusPercent).toBe(24); });
+  it('adds 5% attack speed per bow level',()=>{expect(getArcherWeapon(1)?.attackSpeedBonusPercent).toBe(5);expect(getArcherWeapon(12)?.attackSpeedBonusPercent).toBe(60);expect(attackCooldownMs('archer',12)).toBeLessThan(attackCooldownMs('archer',1));});
   it('calculates damage with agility and the equipped bow bonus', () => { const player=createPlayerState('archer'); player.stats.agility=10; expect(powerDamage('archer',player.stats,1)).toBe(31); expect(powerDamage('archer',player.stats,12)).toBe(37); });
   it('does not use strength in Archer damage', () => { const player=createPlayerState('archer'); player.stats.agility=5; const before=powerDamage('archer',player.stats,4); player.stats.strength=999; expect(powerDamage('archer',player.stats,4)).toBe(before); });
   it('rounds the final damage only once', () => { const player=createPlayerState('archer'); player.stats.agility=1; expect(powerDamage('archer',player.stats,1)).toBe(3); });

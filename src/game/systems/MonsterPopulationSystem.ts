@@ -188,6 +188,7 @@ export class MonsterPopulationSystem {
         ghost: this.aliveByType("ghost"),
         bear: this.aliveByType("bear"),
         bat: this.aliveByType("bat"),
+        "evil-pumpkin": this.aliveByType("evil-pumpkin"),
       },
       this.rules,
       this.random,

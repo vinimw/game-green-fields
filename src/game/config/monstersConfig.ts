@@ -1,4 +1,4 @@
-export type MonsterType = "crawler" | "wailer" | "ghost" | "bear" | "bat";
+export type MonsterType = "crawler" | "wailer" | "ghost" | "bear" | "bat" | "evil-pumpkin";
 export const MONSTERS_CONFIG = {
   crawler: {
     level: 1,
@@ -75,6 +75,21 @@ export const MONSTERS_CONFIG = {
     wanderRadius: 30,
     attackRadius: 1.1,
   },
+  "evil-pumpkin": {
+    level: 3,
+    unlockPlayerLevel: 20,
+    health: 150,
+    damage: 70,
+    experienceReward: 50,
+    coinDrop: { chance: 0.3, amount: 25 },
+    meatDrop: { chance: 0, amount: 0 },
+    attackCooldownMs: 2200,
+    movementSpeed: 3.2,
+    detectionRadius: 17,
+    leashRadius: 25,
+    attackRadius: 6,
+    poisonProjectileSpeed: 9,
+  },
 } as const;
 export const MONSTER_SPAWN_CONFIG = {
   enabled: true,
@@ -89,7 +104,7 @@ export const MONSTER_SPAWN_CONFIG = {
   monsters: {
     crawler: {
       enabled: true,
-      maxPlayerLevel: 29,
+      maxPlayerLevel: 19,
       maxAlive: 10,
       respawnDelayMs: 12000,
       spawnGroupSize: 2,
@@ -124,6 +139,15 @@ export const MONSTER_SPAWN_CONFIG = {
       spawnGroupSize: 6,
       spawnWeight: 60,
       unlockPlayerLevel: 30,
+    },
+    "evil-pumpkin": {
+      enabled: true,
+      maxAlive: 10,
+      minimumAliveAfterUnlock: 2,
+      respawnDelayMs: 8000,
+      spawnGroupSize: 2,
+      spawnWeight: 100,
+      unlockPlayerLevel: 20,
     },
   },
   forcedSpawnRetryMs: 2000,

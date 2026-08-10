@@ -1,6 +1,6 @@
 import type { MonsterType } from "../config/monstersConfig";
 import type { DefenseType } from "../config/defenseConfig";
-import type { MageSpellType } from "../config/mageConfig";
+import type { MageAbilityType, MageSpellType } from "../config/mageConfig";
 export type Vec2 = { x: number; z: number };
 export type Stats = {
   strength: number;
@@ -33,6 +33,8 @@ export type PlayerState = {
   bootsLevel: number;
   selectedSpell: MageSpellType;
   staffLevel: number;
+  learnedMageAbilities: MageAbilityType[];
+  selectedMageAbility: MageAbilityType;
   currentHealth: number;
   stats: Stats;
   availableStatPoints: number;

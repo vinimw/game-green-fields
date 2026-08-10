@@ -75,6 +75,15 @@ const areas = [{ id: "field", minX: -10, maxX: 10, minZ: -10, maxZ: 10 }],
       spawnWeight: 25,
       unlockPlayerLevel: 30,
     },
+    "evil-pumpkin": {
+      enabled: true,
+      maxAlive: 10,
+      minimumAliveAfterUnlock: 2,
+      respawnDelayMs: 8000,
+      spawnGroupSize: 2,
+      spawnWeight: 100,
+      unlockPlayerLevel: 20,
+    },
   };
 describe("spawn position", () => {
   it("rejects positions near player", () =>
@@ -133,7 +142,7 @@ describe("horror population rules", () => {
   it("ignores types at their limit", () =>
     expect(
       selectSpawnType(
-        { crawler: 10, wailer: 0, ghost: 0, bear: 0, bat: 0 },
+        { crawler: 10, wailer: 0, ghost: 0, bear: 0, bat: 0, "evil-pumpkin": 0 },
         rules,
         () => 0,
       ),
@@ -179,6 +188,11 @@ describe("horror population rules", () => {
     population.setPlayerLevelProvider(() => 30);
     expect(population.spawn("bat")).toBe(6);
   });
+  it("unlocks Evil Pumpkins in groups of two at player level twenty",()=>{
+    const monsters:Monster[]=[],positions={findValidSpawnPosition:()=>({x:7,z:-7})} as unknown as SpawnPositionService,population=new MonsterPopulationSystem(monsters,positions,(type,position)=>fake(type,true,position),()=>({x:0,z:0}));
+    population.setPlayerLevelProvider(()=>19);expect(population.spawn("evil-pumpkin")).toBe(0);
+    population.setPlayerLevelProvider(()=>20);expect(population.spawn("evil-pumpkin")).toBe(2);
+  });
   it("forces the first bat swarm after level thirty without waiting for a random respawn", () => {
     const monsters = [
         ...Array.from({ length: 4 }, () => fake("wailer")),
@@ -197,7 +211,7 @@ describe("horror population rules", () => {
     population.update(1);
     expect(population.aliveByType("bat")).toBe(6);
   });
-  it("removes level-one Crawlers and their respawns at level thirty", () => {
+  it("removes level-one Crawlers and their respawns at level twenty", () => {
     const monsters = [fake("crawler")],
       positions = {
         findValidSpawnPosition: () => ({ x: 7, z: -7 }),
@@ -208,10 +222,10 @@ describe("horror population rules", () => {
         (type, position) => fake(type, true, position),
         () => ({ x: 0, z: 0 }),
       );
-    population.setPlayerLevelProvider(() => 29);
+    population.setPlayerLevelProvider(() => 19);
     population.onMonsterKilled("crawler");
     expect(population.pendingRespawns).toHaveLength(1);
-    population.setPlayerLevelProvider(() => 30);
+    population.setPlayerLevelProvider(() => 20);
     population.update(1);
     expect(population.aliveByType("crawler")).toBe(0);
     expect(population.pendingRespawns).toHaveLength(0);

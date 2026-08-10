@@ -1,5 +1,6 @@
 import { getArcherWeapon } from "./archerWeaponsConfig";
 export type MageSpellType = "ice-lance" | "lightning-lance";
+export type MageAbilityType = "lance" | "rain";
 export type StaffVisualStyle =
   | "branch"
   | "crystal"
@@ -13,6 +14,8 @@ export type StaffDefinition = {
   name: string;
   level: number;
   price: number;
+  damageBonusPercent: number;
+  attackSpeedBonusPercent: number;
   aoeRadius: number;
   visual: { woodColor: string; crystalColor: string; style: StaffVisualStyle };
 };
@@ -29,6 +32,9 @@ const staff = (
   id,
   name,
   price: getArcherWeapon(level)?.price ?? 0,
+  damageBonusPercent: getArcherWeapon(level)?.damageBonusPercent ?? 0,
+  attackSpeedBonusPercent:
+    getArcherWeapon(level)?.attackSpeedBonusPercent ?? level * 5,
   aoeRadius,
   visual: { woodColor, crystalColor, style },
 });
@@ -148,10 +154,16 @@ export const MAGE_CONFIG = {
     range: 18,
     cooldownMs: 420,
     projectileSpeed: 20,
+    singleTargetHitRadius: 1,
     autoplayRetreatDistance: 3.4,
     aoeDamageMultiplier: 1,
   },
   initialSpell: "ice-lance" as MageSpellType,
+  initialAbility: "lance" as MageAbilityType,
+  abilities: {
+    lance: { name: "Lance", damageMultiplier: 1 },
+    rain: { name: "Rain", damageMultiplier: 1.15, bookId: "rain-skill-book" },
+  },
   initialStaffLevel: 1,
   spellFeedbackMs: 850,
   debug: { showMageAttackRange: false, showMageAoERadius: false },

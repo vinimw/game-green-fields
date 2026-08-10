@@ -24,6 +24,8 @@ export const createPlayerState = (
     bootsLevel: 0,
     selectedSpell: MAGE_CONFIG.initialSpell,
     staffLevel: MAGE_CONFIG.initialStaffLevel,
+    learnedMageAbilities: [MAGE_CONFIG.initialAbility],
+    selectedMageAbility: MAGE_CONFIG.initialAbility,
     currentHealth: maxHealth(stats.vitality, GAME_CONFIG.player.initialLevel),
     stats,
     availableStatPoints: initialStatPoints(GAME_CONFIG.player.initialLevel),

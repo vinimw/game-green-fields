@@ -1,0 +1,19 @@
+import {MAGE_CONFIG,type MageAbilityType} from "../config/mageConfig";
+import type {PlayerState} from "../core/types";
+import {powerDamage} from "../systems/StatsSystem";
+import {learnRainAbility,selectMageAbility} from "../systems/MageAbilitySystem";
+
+export class MageAbilityMenu{
+  private el:HTMLElement;private mode:"backpack"|"abilities"="backpack";private selectedBook=false;private keyHandler:(event:KeyboardEvent)=>void;
+  constructor(root:HTMLElement,private player:PlayerState,private pause:(paused:boolean)=>void,private toast:(text:string)=>void){this.el=document.createElement("div");this.el.className="overlay hidden mage-inventory-overlay";root.append(this.el);this.keyHandler=event=>{if(event.repeat||this.player.powerType!=="magic")return;if(event.code==="KeyM"){event.preventDefault();this.toggle("backpack");}if(event.code==="KeyI"){event.preventDefault();this.toggle("abilities");}if(event.code==="Escape"&&this.isOpen())this.close();};addEventListener("keydown",this.keyHandler);}
+  dispose(){removeEventListener("keydown",this.keyHandler);this.el.remove();}
+  private isOpen(){return!this.el.classList.contains("hidden");}
+  private toggle(mode:"backpack"|"abilities"){if(this.isOpen()&&this.mode===mode){this.close();return;}this.mode=mode;this.el.classList.remove("hidden");this.pause(true);this.render();}
+  private close(){this.el.classList.add("hidden");this.pause(false);}
+  private damage(ability:MageAbilityType){return Math.round(powerDamage("magic",this.player.stats,this.player.staffLevel)*MAGE_CONFIG.abilities[ability].damageMultiplier);}
+  private render(){const hasBook=this.player.inventory.includes(MAGE_CONFIG.abilities.rain.bookId),learned=this.player.learnedMageAbilities.includes("rain"),element=this.player.selectedSpell==="ice-lance"?"gelo":"raio";
+    if(this.mode==="backpack")this.el.innerHTML=`<div class="panel modal-panel mage-inventory"><button class="modal-close" data-close>×</button><h1>Mochila</h1><nav class="inventory-tabs"><button class="active">Habilidades</button></nav><div class="book-grid">${hasBook?`<button class="skill-book ${this.selectedBook?"selected":""}" data-book><span>📘</span><b>Livro da Chuva</b><small>Habilidade para Mago</small></button>`:`<p class="empty">Nenhum livro de habilidade na mochila.</p>`}</div>${this.selectedBook&&hasBook?`<section class="skill-description"><h2>Chuva de ${element}</h2><p>Uma chuva de ${element}.</p><p><b>+15% de poder de ataque</b></p><button data-learn>Aprender</button></section>`:""}${learned?'<p class="learned-note">Chuva já foi aprendida. Pressione I para equipar.</p>':""}</div>`;
+    else this.el.innerHTML=`<div class="panel modal-panel mage-inventory"><button class="modal-close" data-close>×</button><h1>Habilidades aprendidas</h1><p>Selecione qual forma de ataque será usada.</p><div class="ability-list">${this.abilityButton("lance",`Lança de ${element}`)}${learned?this.abilityButton("rain",`Chuva de ${element}`):""}</div></div>`;
+    this.el.querySelector("[data-close]")?.addEventListener("click",()=>this.close());this.el.querySelector("[data-book]")?.addEventListener("click",()=>{this.selectedBook=true;this.render();});this.el.querySelector("[data-learn]")?.addEventListener("click",()=>{if(learnRainAbility(this.player))this.toast("🌧️ Habilidade Chuva aprendida!");this.selectedBook=false;this.render();});this.el.querySelectorAll<HTMLElement>("[data-ability]").forEach(button=>button.onclick=()=>{const ability=button.dataset.ability as MageAbilityType;if(selectMageAbility(this.player,ability)){this.toast(`${MAGE_CONFIG.abilities[ability].name} equipada`);this.render();}});}
+  private abilityButton(ability:MageAbilityType,name:string){return`<button class="ability-card ${this.player.selectedMageAbility===ability?"selected":""}" data-ability="${ability}"><b>${ability==="rain"?"🌧️":"✨"} ${name}</b><span>Dano ${this.damage(ability)}</span><small>${ability==="rain"?"+15% de poder":"Ataque padrão"}</small></button>`;}
+}

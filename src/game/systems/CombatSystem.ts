@@ -1,16 +1,29 @@
 import type { Player } from "../entities/Player";
 import type { Monster } from "../entities/Monster";
 import { GAME_CONFIG } from "../config/gameConfig";
-import { attackRange, criticalChance, powerDamage } from "./StatsSystem";
+import {
+  attackCooldownMs,
+  attackRange,
+  criticalChance,
+  powerDamage,
+} from "./StatsSystem";
 import { addExperience } from "./ExperienceSystem";
 import { MONSTERS_CONFIG } from "../config/monstersConfig";
 import { consumeAttackHunger } from "./HungerSystem";
+import {
+  distanceXZ,
+  resolveRangedHits,
+  type GroundPosition,
+} from "./RangedHitResolver";
+
 export const isTargetInRange = (distance: number, range: number) =>
   distance <= range;
+
 export class CombatSystem {
   private cooldown = 0;
   constructor(
     private player: Player,
+    private monsters: () => Monster[],
     private feedback: (
       text: string,
       x: number,
@@ -19,20 +32,54 @@ export class CombatSystem {
     ) => void,
     private onMonsterKilled: (monster: Monster) => void = () => {},
     private onLevelUp: () => void = () => {},
+    private onImpact: (
+      position: GroundPosition,
+      targets: Monster[],
+    ) => void = () => {},
   ) {}
   update(dt: number) {
     this.cooldown = Math.max(0, this.cooldown - dt * 1000);
   }
-  attackTarget(target: Monster) {
-    if (this.cooldown > 0 || !target.isTargetable) return false;
-    const dx = target.root.position.x - this.player.root.position.x,
-      dz = target.root.position.z - this.player.root.position.z,
-      distance = Math.hypot(dx, dz);
-    if (!isTargetInRange(distance, attackRange(this.player.state.powerType)))
+  attackPosition(targetPosition: GroundPosition) {
+    const range = attackRange(this.player.state.powerType);
+    if (
+      this.cooldown > 0 ||
+      !isTargetInRange(
+        distanceXZ(this.player.root.position, targetPosition),
+        range,
+      )
+    )
       return false;
-    this.cooldown = GAME_CONFIG.player.attack.cooldownMs;
+    this.cooldown = attackCooldownMs(
+      this.player.state.powerType,
+      this.player.state.archerWeaponLevel,
+    );
     consumeAttackHunger(this.player.state);
+    const dx = targetPosition.x - this.player.root.position.x,
+      dz = targetPosition.z - this.player.root.position.z;
     this.player.root.rotation.y = Math.atan2(dx, dz);
+    return true;
+  }
+  resolveImpact(impactPosition: GroundPosition) {
+    const hitRadius =
+      this.player.state.powerType === "archer"
+        ? GAME_CONFIG.rangedCombat.archer.hitRadius
+        : GAME_CONFIG.rangedCombat.healer.hitRadius;
+    const targets = resolveRangedHits(
+      impactPosition,
+      this.monsters()
+        .filter((monster) => monster.isTargetable)
+        .map((monster) => ({
+          target: monster,
+          position: monster.root.position,
+        })),
+      hitRadius,
+    );
+    const target = targets[0];
+    if (!target) {
+      this.onImpact(impactPosition, []);
+      return [];
+    }
     const critical =
         Math.random() * 100 < criticalChance(this.player.state.stats.agility),
       damage = Math.round(
@@ -56,6 +103,7 @@ export class CombatSystem {
       if (levelsGained > 0) this.onLevelUp();
       this.onMonsterKilled(target);
     }
-    return true;
+    this.onImpact(impactPosition, targets);
+    return targets;
   }
 }

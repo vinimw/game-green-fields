@@ -22,7 +22,8 @@ const migrateMonsterType = (type: string): MonsterType | null =>
           type === "wailer" ||
           type === "ghost" ||
           type === "bear" ||
-          type === "bat"
+          type === "bat" ||
+          type === "evil-pumpkin"
         ? type
         : null;
 
@@ -78,6 +79,10 @@ export class SaveSystem {
       if (typeof legacy.bootsLevel !== "number") legacy.bootsLevel = 0;
       if (legacy.selectedSpell !== "ice-lance" && legacy.selectedSpell !== "lightning-lance") legacy.selectedSpell = MAGE_CONFIG.initialSpell;
       if (typeof legacy.staffLevel !== "number") legacy.staffLevel = MAGE_CONFIG.initialStaffLevel;
+      if (!Array.isArray(legacy.learnedMageAbilities)) legacy.learnedMageAbilities=[MAGE_CONFIG.initialAbility];
+      if (!legacy.learnedMageAbilities.includes("lance")) legacy.learnedMageAbilities.unshift("lance");
+      if (legacy.selectedMageAbility!=="lance"&&legacy.selectedMageAbility!=="rain") legacy.selectedMageAbility=MAGE_CONFIG.initialAbility;
+      if (!legacy.learnedMageAbilities.includes(legacy.selectedMageAbility)) legacy.selectedMageAbility=MAGE_CONFIG.initialAbility;
       const player = data.player;
       player.lives = Math.max(
         0,

@@ -29,6 +29,7 @@ import { InputSystem } from "../systems/InputSystem";
 import { CombatSystem } from "../systems/CombatSystem";
 import { CoinPickupSystem } from "../systems/CoinPickupSystem";
 import { MeatPickupSystem } from "../systems/MeatPickupSystem";
+import {SkillBookPickupSystem} from "../systems/SkillBookPickupSystem";
 import { eatRawSteak } from "../systems/HungerSystem";
 import {
   purchaseHealthPotion,
@@ -87,6 +88,7 @@ import {
   movementSpeed,
   movementSpeedBonuses,
   powerDamage,
+  attackRange,
 } from "../systems/StatsSystem";
 import { grantTowerKillExperience } from "../defenses/TowerRewardSystem";
 import { BossSpawnSystem } from "../systems/BossSpawnSystem";
@@ -98,6 +100,8 @@ import { MageCombatSystem } from "../systems/MageCombatSystem";
 import {currentMageStaff,nextMageStaff,purchaseMageStaff} from "../systems/MageStaffSystem";
 import {getStaff,MAGE_CONFIG,toggleMageSpell} from "../config/mageConfig";
 import { scaledMonsterDamage } from "../systems/MonsterScalingSystem";
+import { RangedAimSystem } from "../systems/RangedAimSystem";
+import type { GroundPosition } from "../systems/RangedHitResolver";
 
 export class WorldScene {
   scene: Scene;
@@ -107,6 +111,7 @@ export class WorldScene {
   input = new InputSystem();
   combat: CombatSystem;
   mageCombat: MageCombatSystem;
+  private rangedAim: RangedAimSystem;
   paused = false;
   private obstacles: SpawnObstacle[] = [];
   private staticObstacleCount = 0;
@@ -115,6 +120,7 @@ export class WorldScene {
   private population: MonsterPopulationSystem;
   private coinPickups: CoinPickupSystem;
   private meatPickups: MeatPickupSystem;
+  private skillBookPickups:SkillBookPickupSystem;
   private baseRaid: BaseRaidSystem;
   private coreMaterial: StandardMaterial;
   private playerLight?: PointLight;
@@ -127,6 +133,7 @@ export class WorldScene {
     end: Vector3;
     elapsed: number;
     duration: number;
+    impactPosition: GroundPosition;
   }[] = [];
   private navigation: MonsterNavigationSystem;
   private autoplay = new AutoplaySystem();
@@ -322,6 +329,15 @@ export class WorldScene {
     this.population.setPlayerLevelProvider(() => this.player.state.level);
     if (!save) this.population.initialize();
     this.camera = new GameCamera(this.scene, engine);
+    this.rangedAim = new RangedAimSystem(
+      this.scene,
+      this.ground,
+      () => this.player.root.position,
+      () => attackRange(this.player.state.powerType),
+      () => this.player.state.powerType === "magic"
+        ? (getStaff(this.player.state.staffLevel).aoeRadius || MAGE_CONFIG.combat.singleTargetHitRadius)
+        : GAME_CONFIG.rangedCombat.archer.hitRadius,
+    );
     this.coinPickups = new CoinPickupSystem(
       this.scene,
       this.player.state,
@@ -340,6 +356,7 @@ export class WorldScene {
       }),
       (amount) => this.hud.toast(`🥩 +${amount} Raw Beef`),
     );
+    this.skillBookPickups=new SkillBookPickupSystem(this.scene,this.player.state,()=>({x:this.player.root.position.x,z:this.player.root.position.z}),()=>this.hud.toast("📘 Rain Skill Book collected · Open backpack with M"));
     const handleMonsterKilled = (monster: Monster) => {
       if (monster.state.type !== "bear")
         this.population.onMonsterKilled(monster.state.type);
@@ -351,6 +368,7 @@ export class WorldScene {
         x: monster.root.position.x,
         z: monster.root.position.z,
       });
+      this.skillBookPickups.tryDrop({x:monster.root.position.x,z:monster.root.position.z});
     };
     const handleLevelUp = () => {
       this.player.playLevelUpEffect();
@@ -372,9 +390,11 @@ export class WorldScene {
     };
     this.combat = new CombatSystem(
       this.player,
+      () => this.monsters,
       (text, x, z, critical) => this.damageText(text, x, z, critical),
       handleMonsterKilled,
       handleLevelUp,
+      (position,targets)=>this.rangedAim.recordImpact(position,targets.length?`${targets.length} target${targets.length===1?"":"s"}`:"MISS"),
     );
     this.mageCombat = new MageCombatSystem(
       this.scene,
@@ -383,6 +403,7 @@ export class WorldScene {
       (text,x,z,critical)=>this.damageText(text,x,z,critical),
       handleMonsterKilled,
       handleLevelUp,
+      (position,targets)=>this.rangedAim.recordImpact(position,targets.length?`${targets.length} target${targets.length===1?"":"s"}`:"MISS"),
     );
     this.defenses = new DefenseManager(
       this.scene,
@@ -415,6 +436,9 @@ export class WorldScene {
           validation.valid,
         ),
     );
+    this.scene.onPointerMove = () => {
+      if (!this.paused && !this.placement.active) this.rangedAim.updateFromPointer();
+    };
     this.scene.onPointerDown = (_, pick) => {
       if (this.paused || !pick?.pickedMesh) return;
       if (this.placement.active) {
@@ -428,12 +452,8 @@ export class WorldScene {
         return;
       }
       this.towerSelection(null);
-      const target = this.monsters.find(
-        (monster) =>
-          monster.isTargetable &&
-          monster.meshes.some((mesh) => mesh === pick.pickedMesh),
-      );
-      if (target && this.canPlayerSee(target)) this.attackPlayerTarget(target);
+      const aim = this.rangedAim.updateFromPointer();
+      if (aim?.valid) this.attackPlayerPosition(aim.position);
     };
     this.debug = document.createElement("pre");
     this.debug.className = "debug";
@@ -442,6 +462,7 @@ export class WorldScene {
       this.drawSpawnAreas();
   }
   update(dt: number) {
+    this.rangedAim.setVisible(!this.paused && !this.placement.active);
     const potionRequested = this.input.consumePotionRequest(),
       lanternToggleRequested = this.input.consumeLanternToggleRequest(),
       lanternRefillRequested = this.input.consumeLanternRefillRequest(),
@@ -470,6 +491,7 @@ export class WorldScene {
       this.applyDarknessVisual();
       this.baseRaid.syncPlayerLevel(this.player.state.level);
       this.placement.update();
+      this.rangedAim.setVisible(!this.placement.active);
       const direction = this.placement.active
         ? { x: 0, z: 0 }
         : this.autoplayEnabled
@@ -518,6 +540,7 @@ export class WorldScene {
       this.population.update(dt * 1000);
       this.coinPickups.update(dt);
       this.meatPickups.update(dt);
+      this.skillBookPickups.update(dt);
       this.updateArrowShots(dt);
     }
     this.monsters.forEach((monster) => monster.animateDeath(dt));
@@ -552,6 +575,7 @@ export class WorldScene {
       visiblePickups = [
         ...this.coinPickups.positions(),
         ...this.meatPickups.positions(),
+        ...this.skillBookPickups.positions(),
       ].filter(
         (coin) =>
           !this.darkness.isDark ||
@@ -577,14 +601,14 @@ export class WorldScene {
       const target = visibleMonsters.find(
         (monster) => monster.state.id === decision.monsterId,
       );
-      if (target) this.attackPlayerTarget(target);
+      if (target) this.attackPlayerPosition(target.root.position);
       return this.resolveAutoplayMovement({ x: 0, z: 0 }, dt);
     }
     if (decision.mode === "kite" && decision.monsterId) {
       const target = visibleMonsters.find(
         (monster) => monster.state.id === decision.monsterId,
       );
-      if (target) this.attackPlayerTarget(target);
+      if (target) this.attackPlayerPosition(target.root.position);
     }
     if (!decision.destination)
       return this.resolveAutoplayMovement({ x: 0, z: 0 }, dt);
@@ -867,7 +891,7 @@ export class WorldScene {
     this.ui.append(element);
     setTimeout(() => element.remove(), 700);
   }
-  private showArrowShot(target: Monster) {
+  private showArrowShot(targetPosition: GroundPosition) {
     this.player.playArcherAttack();
     this.audio.playBowShot();
     const start = new Vector3(
@@ -875,7 +899,7 @@ export class WorldScene {
         1.4,
         this.player.root.position.z,
       ),
-      end = new Vector3(target.root.position.x, 1, target.root.position.z),
+      end = new Vector3(targetPosition.x, 0.12, targetPosition.z),
       direction = end.subtract(start),
       distance = direction.length(),
       root = new TransformNode("flying-arrow", this.scene),
@@ -911,23 +935,23 @@ export class WorldScene {
         0.12,
         distance / GAME_CONFIG.player.attack.arrowProjectileSpeed,
       ),
+      impactPosition: { x: targetPosition.x, z: targetPosition.z },
     });
   }
-  private attackPlayerTarget(target: Monster) {
+  private attackPlayerPosition(targetPosition: GroundPosition) {
     if (this.player.state.powerType === "magic")
-      return this.mageCombat.cast(target);
-    const attacked = this.combat.attackTarget(target);
+      return this.mageCombat.cast(targetPosition);
+    const attacked = this.combat.attackPosition(targetPosition);
     if (attacked && this.player.state.powerType === "archer")
-      this.showArrowShot(target);
+      this.showArrowShot(targetPosition);
+    else if (attacked) this.combat.resolveImpact(targetPosition);
     return attacked;
   }
-  castMageAtNearest() {
+  castMageAtAim() {
     if (this.player.state.powerType !== "magic" || this.paused) return false;
-    const target = this.monsters
-      .filter((monster) => monster.isTargetable && this.canPlayerSee(monster))
-      .sort((a,b)=>Vector3.Distance(this.player.root.position,a.root.position)-Vector3.Distance(this.player.root.position,b.root.position))[0];
-    if (!target) { this.hud.toast("No target in sight"); return false; }
-    if (!this.attackPlayerTarget(target)) { this.hud.toast("Target is out of range"); return false; }
+    const targetPosition=this.rangedAim.targetPosition();
+    if(!targetPosition){this.hud.toast("Aim at a valid ground position");return false;}
+    if (!this.attackPlayerPosition(targetPosition)) return false;
     return true;
   }
   toggleMageSpell() {
@@ -946,10 +970,16 @@ export class WorldScene {
       Vector3.LerpToRef(arrow.start, arrow.end, progress, arrow.root.position);
       arrow.root.position.y += arc;
       if (progress >= 1) {
+        const targets=this.combat.resolveImpact(arrow.impactPosition);
+        this.createArrowImpact(arrow.impactPosition,targets.length>0);
         arrow.root.dispose(false, true);
         this.arrows.splice(index, 1);
       }
     }
+  }
+  private createArrowImpact(position:GroundPosition,hit:boolean){
+    const points=Array.from({length:17},(_,index)=>{const angle=index/16*Math.PI*2;return new Vector3(position.x+Math.cos(angle)*.22,.05,position.z+Math.sin(angle)*.22);}),ring=MeshBuilder.CreateLines(hit?"arrow-hit":"arrow-miss",{points},this.scene) as LinesMesh;
+    ring.color=Color3.FromHexString(hit?"#f4d27a":"#a8a19a");ring.isPickable=false;setTimeout(()=>ring.dispose(false,true),260);
   }
   private updateDebug(dt: number) {
     this.updateAutoplayTowerUpgrades(dt);
@@ -970,7 +1000,11 @@ export class WorldScene {
       .join("\n")}`;
     if (player.powerType === "magic") {
       const staff = getStaff(player.staffLevel);
-      this.debug.textContent += `\nClass Mage\nSpell ${MAGE_CONFIG.spells[player.selectedSpell].name}\nMagic Damage ${powerDamage("magic", player.stats)}\nIntelligence ${player.stats.intelligence}\nStaff ${staff.name}\nStaff Level ${staff.level}\nAoE ${staff.aoeRadius}\nRange ${MAGE_CONFIG.combat.range}`;
+      this.debug.textContent += `\nClass Mage\nSpell ${MAGE_CONFIG.spells[player.selectedSpell].name}\nMagic Damage ${powerDamage("magic", player.stats,player.staffLevel)}\nIntelligence ${player.stats.intelligence}\nStaff ${staff.name}\nStaff Level ${staff.level}\nStaff Damage Bonus ${staff.damageBonusPercent}%\nAoE ${staff.aoeRadius}\nRange ${MAGE_CONFIG.combat.range}`;
+    }
+    if(GAME_CONFIG.rangedCombat.debug.showAimPosition){
+      const aimDebug=this.rangedAim.debug(),aim=aimDebug.aim,impact=aimDebug.lastImpact;
+      this.debug.textContent+=`\nAim ${aim?`X ${aim.position.x.toFixed(1)} Z ${aim.position.z.toFixed(1)}`:"NO TERRAIN"}\nDistance ${aim?.distance.toFixed(1)??"—"}\nCast Range ${attackRange(player.powerType)}\nValid ${aim?.valid?"YES":"NO"}\nLast Impact ${impact?`X ${impact.x.toFixed(1)} Z ${impact.z.toFixed(1)}`:"—"}\nLast Hit ${aimDebug.lastHit}`;
     }
   }
   private updateAutoplayTowerUpgrades(dt: number) {
@@ -1029,6 +1063,8 @@ export class WorldScene {
       gas = GAME_CONFIG.shop.lanternGas,
       currentWeapon = currentArcherWeapon(player),
       nextWeapon = nextArcherWeapon(player),
+      currentStaff = currentMageStaff(player),
+      nextStaff = nextMageStaff(player),
       currentBoots = currentArcherBoots(player),
       nextBoots = nextArcherBoots(player),
       currentBonuses = movementSpeedBonuses(
@@ -1064,10 +1100,10 @@ export class WorldScene {
       currentDamage: powerDamage(
         player.powerType,
         player.stats,
-        player.archerWeaponLevel,
+        player.powerType === "magic" ? player.staffLevel : player.archerWeaponLevel,
       ),
-      nextDamage: nextWeapon
-        ? powerDamage(player.powerType, player.stats, nextWeapon.level)
+      nextDamage: (player.powerType === "magic" ? nextStaff : nextWeapon)
+        ? powerDamage(player.powerType, player.stats, (player.powerType === "magic" ? nextStaff : nextWeapon)!.level)
         : null,
       currentBoots,
       nextBoots,
@@ -1081,8 +1117,8 @@ export class WorldScene {
         : null,
       currentSpeedBonusPercent: currentBonuses.totalBonusPercent,
       nextSpeedBonusPercent: nextBonuses?.totalBonusPercent ?? null,
-      currentStaff: currentMageStaff(player),
-      nextStaff: nextMageStaff(player),
+      currentStaff,
+      nextStaff,
     };
   }
   buyHealthPotion() {

@@ -38,6 +38,15 @@ export class Monster {
   private smokePuffs: { mesh: Mesh; velocity: Vector3 }[] = [];
   private smokeMaterial?: StandardMaterial;
   private wings: TransformNode[] = [];
+  private poisonProjectile?: {
+    mesh: Mesh;
+    start: Vector3;
+    end: Vector3;
+    elapsed: number;
+    duration: number;
+    damage: number;
+    applyDamage: (damage: number) => void;
+  };
   constructor(
     private scene: Scene,
     public state: MonsterState,
@@ -204,6 +213,14 @@ export class Monster {
         this.meshes.push(wing);
         this.wings.push(pivot);
       }
+    } else if (this.state.type === "evil-pumpkin") {
+      const rind=this.material("evil-pumpkin-rind","#C64F12"),groove=this.material("evil-pumpkin-grooves","#7E260B"),stemMaterial=this.material("evil-pumpkin-stem","#3F5924"),glow=this.material("evil-pumpkin-glow","#B9FF39");
+      glow.emissiveColor=Color3.FromHexString("#65A815");
+      const body=MeshBuilder.CreateSphere("evil-pumpkin-body",{diameter:1.75,segments:16},this.scene);this.add(body,1,rind);body.scaling.set(1.08,.88,1);
+      for(let index=0;index<8;index++){const angle=index/8*Math.PI*2,rib=MeshBuilder.CreateTorus("evil-pumpkin-rib",{diameter:1.58,thickness:.055,tessellation:18},this.scene);rib.parent=this.visual;rib.material=groove;rib.position.y=1;rib.rotation.x=Math.PI/2;rib.rotation.y=angle;rib.scaling.x=.72;this.meshes.push(rib);}
+      const stem=MeshBuilder.CreateCylinder("evil-pumpkin-stem",{height:.58,diameterTop:.22,diameterBottom:.35,tessellation:7},this.scene);stem.parent=this.visual;stem.material=stemMaterial;stem.position.set(.12,2.02,0);stem.rotation.z=-.22;this.meshes.push(stem);
+      for(const x of [-.33,.33]){const eye=MeshBuilder.CreateCylinder("evil-pumpkin-eye",{height:.08,diameterTop:0,diameterBottom:.34,tessellation:3},this.scene);eye.parent=this.visual;eye.material=glow;eye.position.set(x,1.2,.82);eye.rotation.x=Math.PI/2;eye.rotation.z=x>0?-.22:.22;this.meshes.push(eye);}
+      const mouth=MeshBuilder.CreateBox("evil-pumpkin-mouth",{width:.78,height:.2,depth:.08},this.scene);mouth.parent=this.visual;mouth.material=glow;mouth.position.set(0,.75,.86);mouth.rotation.z=.08;this.meshes.push(mouth);
     } else if (this.state.type === "bear") {
       const fur = this.material("bear-fur", "#2B1D19"),
         darkFur = this.material("bear-dark-fur", "#120D0C"),
@@ -595,7 +612,9 @@ export class Monster {
       }
     }
     if (this.aiState === "ATTACKING" && this.cooldown === 0) {
-      damagePlayer(scaledMonsterDamage(this.state.type, player.state.level));
+      const damage=scaledMonsterDamage(this.state.type, player.state.level);
+      if(this.state.type==="evil-pumpkin")this.launchPoisonSpit(player.root.position,damage,damagePlayer);
+      else damagePlayer(damage);
       this.cooldown = config.attackCooldownMs;
     }
     this.finishUpdate(dt);
@@ -644,6 +663,7 @@ export class Monster {
       Math.random() * (config.pauseMaxMs - config.pauseMinMs);
   }
   private finishUpdate(dt: number) {
+    this.updatePoisonSpit(dt);
     this.updateInvisibility(dt);
     this.state.position = { x: this.root.position.x, z: this.root.position.z };
     this.animateMovement(dt);
@@ -698,6 +718,12 @@ export class Monster {
       this.wings.forEach((wing, index) => {
         wing.rotation.z = (index === 0 ? 1 : -1) * (0.3 + flap * 0.72);
       });
+    } else if (this.state.type === "evil-pumpkin") {
+      const pace=this.moving?7:3,jump=Math.abs(Math.sin(this.animationTime*pace));
+      this.visual.position.y=jump*(this.moving?.5:.13);
+      this.visual.rotation.z=Math.sin(this.animationTime*pace)*(this.moving?.11:.035);
+      this.visual.scaling.y=1-jump*.08;
+      this.visual.scaling.x=this.visual.scaling.z=1+jump*.045;
     } else if (this.state.type === "bear") {
       const pace = this.moving ? 5 : 1.5;
       this.visual.position.y =
@@ -734,6 +760,18 @@ export class Monster {
       const phase = Math.floor(this.visibilityTimerMs / config.blinkIntervalMs);
       this.root.setEnabled(phase % 2 === 0);
     } else this.root.setEnabled(true);
+  }
+  private launchPoisonSpit(target:Vector3,damage:number,applyDamage:(damage:number)=>void){
+    if(this.poisonProjectile)return;
+    const material=this.material("pumpkin-poison-spit","#79D52D");material.emissiveColor=Color3.FromHexString("#3F8F16");
+    const mesh=MeshBuilder.CreateSphere("pumpkin-poison-projectile",{diameter:.34,segments:8},this.scene);mesh.material=material;mesh.isPickable=false;
+    const start=new Vector3(this.root.position.x,1.15,this.root.position.z),end=new Vector3(target.x,1,target.z),distance=Vector3.Distance(start,end);mesh.position.copyFrom(start);
+    this.poisonProjectile={mesh,start,end,elapsed:0,duration:Math.max(.12,distance/MONSTERS_CONFIG["evil-pumpkin"].poisonProjectileSpeed),damage,applyDamage};
+  }
+  private updatePoisonSpit(dt:number){
+    const projectile=this.poisonProjectile;if(!projectile)return;
+    projectile.elapsed+=dt;const progress=Math.min(1,projectile.elapsed/projectile.duration);Vector3.LerpToRef(projectile.start,projectile.end,progress,projectile.mesh.position);projectile.mesh.position.y+=Math.sin(progress*Math.PI)*.7;projectile.mesh.scaling.setAll(1+Math.sin(progress*Math.PI)*.35);
+    if(progress<1)return;projectile.applyDamage(projectile.damage);projectile.mesh.dispose(false,true);this.poisonProjectile=undefined;
   }
   get isTargetable() {
     return this.state.alive && !this.invisible;
@@ -816,5 +854,6 @@ export class Monster {
     this.root.dispose(false, true);
     this.smokePuffs.forEach((puff) => puff.mesh.dispose());
     this.smokeMaterial?.dispose();
+    this.poisonProjectile?.mesh.dispose(false,true);
   }
 }
