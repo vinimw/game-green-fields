@@ -17,6 +17,7 @@ export const DEFENSE_CONFIG = {
     upgradeCostStep: 2000,
     damageMultiplierPerLevel: 2,
     autoplayUpgradeCooldownMs: 3000,
+    removalRefundPercent: 50,
     maxHealth: 3000,
     healthPerLevel: 1000,
     killExperienceReward: 2,
@@ -38,6 +39,30 @@ export const getNextDefenseCost = (currentTowerCount: number) =>
 export const getTowerUpgradeCost = (currentLevel: number) =>
   Math.max(1, Math.floor(currentLevel)) *
   DEFENSE_CONFIG.miniTower.upgradeCostStep;
+export const getTowerUpgradeInvestment = (level: number) => {
+  const upgrades = Math.max(
+    0,
+    Math.min(DEFENSE_CONFIG.miniTower.maxLevel, Math.floor(level)) - 1,
+  );
+  return (
+    DEFENSE_CONFIG.miniTower.upgradeCostStep *
+    ((upgrades * (upgrades + 1)) / 2)
+  );
+};
+export const getTowerTotalInvestment = (tower: {
+  level: number;
+  investedCoins?: number;
+}) =>
+  tower.investedCoins ??
+  DEFENSE_CONFIG.miniTower.baseCost + getTowerUpgradeInvestment(tower.level);
+export const getTowerRemovalRefund = (tower: {
+  level: number;
+  investedCoins?: number;
+}) =>
+  Math.floor(
+    getTowerTotalInvestment(tower) *
+      (DEFENSE_CONFIG.miniTower.removalRefundPercent / 100),
+  );
 export const getTowerDamage = (level: number) =>
   DEFENSE_CONFIG.miniTower.damage *
   DEFENSE_CONFIG.miniTower.damageMultiplierPerLevel **

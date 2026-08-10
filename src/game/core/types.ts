@@ -59,6 +59,7 @@ export type DefenseState = {
   position: { x: number; y: number; z: number };
   rotation: number;
   currentHealth: number;
+  investedCoins?: number;
 };
 export type SaveData = {
   version: 1;

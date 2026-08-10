@@ -77,6 +77,8 @@ import {
   getNextDefenseCost,
   getTowerDamage,
   getTowerUpgradeCost,
+  getTowerRemovalRefund,
+  getTowerTotalInvestment,
 } from "../config/defenseConfig";
 import type { TowerUpgradeView } from "../ui/TowerUpgradePanel";
 import { HORROR_THEME_CONFIG } from "../config/horrorThemeConfig";
@@ -132,6 +134,7 @@ export class WorldScene {
   private autoplayStuckMs = 0;
   private autoplayRecoveryMs = 0;
   private autoplayRecoveryDirection = { x: 0, z: 0 };
+  private autoplayPurchaseCooldownMs = 0;
   private darkness = new DarknessCycleSystem();
   private starvation = new StarvationSystem();
   private ground: Mesh;
@@ -434,6 +437,10 @@ export class WorldScene {
       lanternRefillRequested = this.input.consumeLanternRefillRequest(),
       steakRequested = this.input.consumeSteakRequest();
     if (!this.paused) {
+      this.autoplayPurchaseCooldownMs = Math.max(
+        0,
+        this.autoplayPurchaseCooldownMs - dt * 1000,
+      );
       if (potionRequested) this.useHealthPotion();
       if (lanternToggleRequested) this.toggleLantern();
       if (lanternRefillRequested) this.refillLantern();
@@ -527,7 +534,9 @@ export class WorldScene {
         z: this.player.root.position.z,
       },
       visibleMonsters = this.monsters.filter(
-        (monster) => monster.isTargetable && this.canPlayerSee(monster),
+        (monster) =>
+          monster.isTargetable &&
+          (monster.state.type === "bear" || this.canPlayerSee(monster)),
       ),
       visiblePickups = [
         ...this.coinPickups.positions(),
@@ -564,6 +573,17 @@ export class WorldScene {
       )
         this.showArrowShot(target);
       return this.resolveAutoplayMovement({ x: 0, z: 0 }, dt);
+    }
+    if (decision.mode === "kite" && decision.monsterId) {
+      const target = visibleMonsters.find(
+        (monster) => monster.state.id === decision.monsterId,
+      );
+      if (
+        target &&
+        this.combat.attackTarget(target) &&
+        this.player.state.powerType === "archer"
+      )
+        this.showArrowShot(target);
     }
     if (!decision.destination)
       return this.resolveAutoplayMovement({ x: 0, z: 0 }, dt);
@@ -673,6 +693,8 @@ export class WorldScene {
       darknessRemainingMs: this.darkness.remainingMs,
       raidActive: this.baseRaid.state.raidActive,
       corePosition: this.baseRaid.position,
+      coreHealth: this.baseRaid.state.currentHealth,
+      coreMaxHealth: this.baseRaid.maxHealth,
     };
   }
   private applyAutoplaySupport() {
@@ -704,6 +726,47 @@ export class WorldScene {
               ? refillLantern(this.player.state)
               : toggleLantern(this.player.state);
       if (result.success) this.hud.toast(`Autoplay: ${result.message}`);
+    }
+    if (this.autoplayPurchaseCooldownMs > 0) return;
+    const purchase = this.autoplay.decidePurchase(
+      this.player.state,
+      monsters,
+      this.autoplayContext(),
+    );
+    if (!purchase) return;
+    if (purchase === "buy-potion") {
+      const result = purchaseHealthPotion(this.player.state);
+      if (result.success) {
+        this.autoplayPurchaseCooldownMs =
+          GAME_CONFIG.autoplay.shopping.purchaseCooldownMs;
+        this.hud.toast(`Autoplay: ${result.message}`);
+      }
+      return;
+    }
+    if (purchase === "buy-gas") {
+      const result = purchaseGasCanister(this.player.state);
+      if (result.success) {
+        this.autoplayPurchaseCooldownMs =
+          GAME_CONFIG.autoplay.shopping.purchaseCooldownMs;
+        this.hud.toast(`Autoplay: ${result.message}`);
+      }
+      return;
+    }
+    const repair = GAME_CONFIG.shop.baseHealthRepair,
+      result = purchaseBaseHealth(
+        this.player.state.coins,
+        this.baseRaid.state.currentHealth,
+        this.baseRaid.maxHealth,
+        repair.cost,
+        repair.healthRestore,
+      );
+    if (result.success) {
+      this.player.state.coins = result.coins;
+      this.baseRaid.state.currentHealth = result.baseHealth;
+      this.autoplayPurchaseCooldownMs =
+        GAME_CONFIG.autoplay.shopping.purchaseCooldownMs;
+      this.updateCoreLight();
+      this.hud.toast(`Autoplay: ${result.message}`);
     }
   }
   private updateCoreLight() {
@@ -1068,6 +1131,8 @@ export class WorldScene {
       coins: this.player.state.coins,
       currentHealth: tower.state.currentHealth,
       maxHealth: tower.maxHealth,
+      investedCoins: getTowerTotalInvestment(tower.state),
+      removalRefund: getTowerRemovalRefund(tower.state),
     };
   }
   upgradeTower(id: string, automatic = false) {
@@ -1082,6 +1147,19 @@ export class WorldScene {
       );
     }
     return result.message;
+  }
+  removeTower(id: string) {
+    const tower = this.defenses.get(id);
+    if (!tower) return "Mini Tower not found";
+    const refund = getTowerRemovalRefund(tower.state),
+      removed = this.defenses.remove(id);
+    if (!removed) return "Mini Tower not found";
+    this.player.state.coins += refund;
+    this.towerSelection(null);
+    this.syncTowerObstacles();
+    const message = `Mini Tower removed · +${refund.toLocaleString()} Coins`;
+    this.hud.toast(message);
+    return message;
   }
   setPlacementStatusHandler(handler: (text: string, valid: boolean) => void) {
     this.placementStatus = handler;

@@ -2,7 +2,7 @@ export const GAME_CONFIG = {
   debug: true,
   mapId: "green-fields",
   player: {
-    initialLevel: 1,
+    initialLevel: 30,
     initialCoins: 10000, // 0
     initialHealthPotions: 0,
     initialGasCanisters: 0,
@@ -117,6 +117,20 @@ export const GAME_CONFIG = {
     lanternRefillLeadSeconds: 1,
     vitalityEveryLevels: { magic: 5, archer: 5, healer: 3 },
     targetRefreshMs: 500,
+    bossRetreatDistance: 4.5,
+    bossRetreatStep: 8,
+    bossPotionHealthPercent: 70,
+    shopping: {
+      purchaseCooldownMs: 1200,
+      potionTarget: 3,
+      bossPotionTarget: 6,
+      gasCanisterTarget: 2,
+      gasFuelThreshold: 50,
+      coreRepairBelowPercent: 80,
+      coreCriticalPercent: 40,
+    },
+    darknessExplorationStep: 10,
+    darknessExplorationArrivalRadius: 1,
   },
   cheats: {
     enabled: true,

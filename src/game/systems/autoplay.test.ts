@@ -5,7 +5,8 @@ import { AutoplaySystem } from './AutoplaySystem';
 import { maxHealth } from './StatsSystem';
 
 const position={x:0,z:0},crawler:AutoplayMonster={id:'crawler-1',type:'crawler',alive:true,health:16,position:{x:6,z:0}},wailer:AutoplayMonster={id:'wailer-1',type:'wailer',alive:true,health:32,position:{x:6,z:0}};
-const context=(values:Partial<AutoplayContext>={}):AutoplayContext=>({darknessActive:false,darknessRemainingMs:30000,raidActive:false,corePosition:{x:0,z:0},...values});
+const bear:AutoplayMonster={id:'bear-1',type:'bear',alive:true,health:3000,position:{x:10,z:0}};
+const context=(values:Partial<AutoplayContext>={}):AutoplayContext=>({darknessActive:false,darknessRemainingMs:30000,raidActive:false,corePosition:{x:0,z:0},coreHealth:300,coreMaxHealth:300,...values});
 
 describe('autoplay decisions',()=>{
   it('hunts a safe living monster',()=>{const player=createPlayerState('archer');expect(new AutoplaySystem().decide(player,position,[crawler],[])).toMatchObject({mode:'attack',monsterId:'crawler-1'});});
@@ -20,4 +21,11 @@ describe('autoplay decisions',()=>{
   it('turns the lantern off outside darkness',()=>{const player=createPlayerState();player.lanternFuel=50;player.lanternOn=true;expect(new AutoplaySystem().decideActions(player,position,[],context())).toEqual(['toggle-lantern']);});
   it('prioritizes the monster closest to the Core during a raid',()=>{const player=createPlayerState('archer'),nearCore={...crawler,id:'core-threat',position:{x:1,z:0}},nearPlayer={...crawler,id:'player-threat',position:{x:8,z:0}};expect(new AutoplaySystem().decide(player,{x:8,z:0},[nearPlayer,nearCore],[],context({raidActive:true})).monsterId).toBe('core-threat');});
   it('returns to defend the Core when a raid target is not visible',()=>{const player=createPlayerState();expect(new AutoplaySystem().decide(player,{x:8,z:8},[],[],context({raidActive:true}))).toEqual({mode:'defend',destination:{x:0,z:0}});});
+  it('prioritizes a distant boss over Coins and an active raid',()=>{const player=createPlayerState('archer');expect(new AutoplaySystem().decide(player,position,[crawler,bear],[{x:1,z:0}],context({raidActive:true}))).toMatchObject({mode:'attack',monsterId:'bear-1'});});
+  it('attacks while retreating when the boss gets dangerously close',()=>{const player=createPlayerState('archer'),closeBoss={...bear,position:{x:2,z:0}};const decision=new AutoplaySystem().decide(player,position,[closeBoss],[]);expect(decision).toMatchObject({mode:'kite',monsterId:'bear-1'});expect(decision.destination!.x).toBeLessThan(0);});
+  it('buys potions and keeps a larger reserve while a boss is alive',()=>{const player=createPlayerState();player.healthPotions=0;expect(new AutoplaySystem().decidePurchase(player,[bear],context())).toBe('buy-potion');player.healthPotions=6;player.gasCanisters=2;expect(new AutoplaySystem().decidePurchase(player,[bear],context())).toBeNull();});
+  it('repairs a damaged Core before building normal consumable reserves',()=>{const player=createPlayerState();expect(new AutoplaySystem().decidePurchase(player,[],context({coreHealth:100}))).toBe('repair-core');});
+  it('buys lantern gas when fuel and reserve are low',()=>{const player=createPlayerState();player.healthPotions=3;player.gasCanisters=0;player.lanternFuel=0;expect(new AutoplaySystem().decidePurchase(player,[],context())).toBe('buy-gas');});
+  it('explores instead of standing still when nothing is visible in darkness',()=>{const player=createPlayerState();const decision=new AutoplaySystem().decide(player,position,[],[],context({darknessActive:true}));expect(decision.mode).toBe('explore');expect(decision.destination).toBeDefined();expect(Math.hypot(decision.destination!.x,decision.destination!.z)).toBeGreaterThan(1);});
+  it('abandons dark exploration as soon as an opponent becomes visible',()=>{const player=createPlayerState('archer'),autoplay=new AutoplaySystem();autoplay.decide(player,position,[],[],context({darknessActive:true}));expect(autoplay.decide(player,position,[crawler],[],context({darknessActive:true}))).toMatchObject({mode:'attack',monsterId:'crawler-1'});});
 });

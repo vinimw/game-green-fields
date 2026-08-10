@@ -5,6 +5,7 @@ import {
   getTowerMaxHealth,
   getTowerTargetCount,
   getTowerUpgradeCost,
+  getTowerRemovalRefund,
 } from "../config/defenseConfig";
 import type { DefenseState } from "../core/types";
 import { purchaseTowerUpgrade } from "./DefensePurchaseSystem";
@@ -62,5 +63,12 @@ describe("Mini Tower upgrades", () => {
       coins: 999999,
       level: 10,
     });
+  });
+  it("refunds half of construction and every purchased upgrade", () => {
+    const state = tower();
+    state.investedCoins = 1500;
+    purchaseTowerUpgrade(2000, state);
+    expect(state.investedCoins).toBe(3500);
+    expect(getTowerRemovalRefund(state)).toBe(1750);
   });
 });

@@ -3,6 +3,7 @@ import { MONSTERS_CONFIG, type MonsterType } from "../config/monstersConfig";
 import type { PlayerState, Vec2 } from "../core/types";
 import { attackRange, maxHealth } from "./StatsSystem";
 import { shouldAutoplayEat } from "./HungerSystem";
+import { scaledMonsterDamage } from "./MonsterScalingSystem";
 
 export type AutoplayMonster = {
   id: string;
@@ -16,14 +17,20 @@ export type AutoplayContext = {
   darknessRemainingMs: number;
   raidActive: boolean;
   corePosition: Vec2;
+  coreHealth: number;
+  coreMaxHealth: number;
 };
 export type AutoplayAction =
   "use-potion" | "refill-lantern" | "toggle-lantern" | "eat-steak";
 export type AutoplayDecision = {
-  mode: "coins" | "hunt" | "attack" | "retreat" | "defend" | "idle";
+  mode: "coins" | "hunt" | "attack" | "kite" | "retreat" | "defend" | "explore" | "idle";
   destination?: Vec2;
   monsterId?: string;
 };
+export type AutoplayPurchaseAction =
+  | "buy-potion"
+  | "buy-gas"
+  | "repair-core";
 const distance = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z);
 const nearest = <T extends Vec2>(origin: Vec2, items: T[]) =>
   items.reduce<T | undefined>(
@@ -33,6 +40,47 @@ const nearest = <T extends Vec2>(origin: Vec2, items: T[]) =>
   );
 
 export class AutoplaySystem {
+  private explorationTarget?: Vec2;
+  private explorationAngle = 0;
+
+  decidePurchase(
+    player: PlayerState,
+    monsters: AutoplayMonster[],
+    context: AutoplayContext,
+  ): AutoplayPurchaseAction | null {
+    const shopping = GAME_CONFIG.autoplay.shopping,
+      corePercent = (context.coreHealth / context.coreMaxHealth) * 100,
+      bossAlive = monsters.some(
+        (monster) => monster.alive && monster.type === "bear",
+      ),
+      potionTarget = bossAlive
+        ? shopping.bossPotionTarget
+        : shopping.potionTarget,
+      canRepair =
+        context.coreHealth < context.coreMaxHealth &&
+        player.coins >= GAME_CONFIG.shop.baseHealthRepair.cost,
+      canBuyPotion =
+        player.healthPotions < GAME_CONFIG.shop.healthPotion.maxInventory &&
+        player.coins >= GAME_CONFIG.shop.healthPotion.cost,
+      needsGas =
+        player.gasCanisters < shopping.gasCanisterTarget &&
+        player.lanternFuel <= shopping.gasFuelThreshold,
+      canBuyGas =
+        needsGas &&
+        player.gasCanisters < GAME_CONFIG.shop.lanternGas.maxInventory &&
+        player.coins >= GAME_CONFIG.shop.lanternGas.cost;
+
+    if (canRepair && corePercent <= shopping.coreCriticalPercent)
+      return "repair-core";
+    if (canBuyPotion && player.healthPotions === 0) return "buy-potion";
+    if (canRepair && corePercent < shopping.coreRepairBelowPercent)
+      return "repair-core";
+    if (canBuyPotion && player.healthPotions < potionTarget)
+      return "buy-potion";
+    if (canBuyGas) return "buy-gas";
+    return null;
+  }
+
   decideActions(
     player: PlayerState,
     position: Vec2,
@@ -48,19 +96,26 @@ export class AutoplaySystem {
         distance(position, monster.position) <=
           MONSTERS_CONFIG[monster.type].detectionRadius,
     );
+    const bossAlive = monsters.some(
+      (monster) => monster.alive && monster.type === "bear",
+    );
     const incomingDamage = nearby.reduce(
       (highest, monster) =>
-        Math.max(highest, MONSTERS_CONFIG[monster.type].damage),
+        Math.max(highest, scaledMonsterDamage(monster.type, player.level)),
       0,
     );
     const dangerHealth = Math.max(
       (maximum * GAME_CONFIG.autoplay.criticalHealthPercent) / 100,
       incomingDamage * GAME_CONFIG.autoplay.potionDangerDamageMultiplier,
     );
+    const bossPotionThreshold =
+      (maximum * GAME_CONFIG.autoplay.bossPotionHealthPercent) / 100;
     if (
       player.healthPotions > 0 &&
       missingHealth > 0 &&
-      player.currentHealth <= dangerHealth
+      (player.currentHealth <= dangerHealth ||
+        (bossAlive && player.currentHealth <= bossPotionThreshold)) &&
+      missingHealth >= Math.min(GAME_CONFIG.shop.healthPotion.healthRestore, maximum * 0.2)
     )
       actions.push("use-potion");
     if (shouldAutoplayEat(player)) actions.push("eat-steak");
@@ -95,6 +150,7 @@ export class AutoplaySystem {
       healthPercent = (player.currentHealth / maximum) * 100,
       critical = healthPercent <= GAME_CONFIG.autoplay.criticalHealthPercent;
     const alive = monsters.filter((monster) => monster.alive),
+      boss = alive.find((monster) => monster.type === "bear"),
       closestMonster = nearest(
         position,
         alive.map((monster) => ({
@@ -104,19 +160,48 @@ export class AutoplaySystem {
         })),
       ) as (AutoplayMonster & Vec2) | undefined;
     if (critical) {
-      if (closestMonster) {
-        const dx = position.x - closestMonster.position.x,
-          dz = position.z - closestMonster.position.z,
+      const threat = boss ?? closestMonster;
+      if (threat) {
+        const dx = position.x - threat.position.x,
+          dz = position.z - threat.position.z,
           length = Math.hypot(dx, dz) || 1;
         return {
           mode: "retreat",
           destination: {
-            x: position.x + (dx / length) * 6,
-            z: position.z + (dz / length) * 6,
+            x: position.x + (dx / length) * GAME_CONFIG.autoplay.bossRetreatStep,
+            z: position.z + (dz / length) * GAME_CONFIG.autoplay.bossRetreatStep,
           },
         };
       }
       return { mode: "idle" };
+    }
+    if (boss) {
+      const bossDistance = distance(position, boss.position),
+        bossRetreatDistance = Math.min(
+          GAME_CONFIG.autoplay.bossRetreatDistance,
+          Math.max(
+            MONSTERS_CONFIG.bear.attackRadius + 0.15,
+            attackRange(player.powerType) - 0.1,
+          ),
+        );
+      if (bossDistance <= bossRetreatDistance) {
+        const dx = position.x - boss.position.x,
+          dz = position.z - boss.position.z,
+          length = Math.hypot(dx, dz) || 1;
+        return {
+          mode: "kite",
+          monsterId: boss.id,
+          destination: {
+            x: position.x +
+              (dx / length) * GAME_CONFIG.autoplay.bossRetreatStep,
+            z: position.z +
+              (dz / length) * GAME_CONFIG.autoplay.bossRetreatStep,
+          },
+        };
+      }
+      return bossDistance <= attackRange(player.powerType)
+        ? { mode: "attack", destination: boss.position, monsterId: boss.id }
+        : { mode: "hunt", destination: boss.position, monsterId: boss.id };
     }
     if (context?.raidActive) {
       const target = alive.reduce<AutoplayMonster | undefined>(
@@ -145,7 +230,7 @@ export class AutoplaySystem {
     const safe = alive.filter(
         (monster) =>
           player.currentHealth >
-          MONSTERS_CONFIG[monster.type].damage *
+          scaledMonsterDamage(monster.type, player.level) *
             GAME_CONFIG.autoplay.safeHealthDamageMultiplier,
       ),
       target = safe.reduce<AutoplayMonster | undefined>((best, monster) => {
@@ -155,8 +240,27 @@ export class AutoplaySystem {
           bestScore = distance(position, best.position) + best.health * 0.05;
         return score < bestScore ? monster : best;
       }, undefined);
-    if (!target)
-      return coin ? { mode: "coins", destination: coin } : { mode: "idle" };
+    if (!target) {
+      if (coin) return { mode: "coins", destination: coin };
+      if (context?.darknessActive && closestMonster) {
+        const dx = position.x - closestMonster.position.x,
+          dz = position.z - closestMonster.position.z,
+          length = Math.hypot(dx, dz) || 1;
+        return {
+          mode: "retreat",
+          destination: {
+            x: position.x + (dx / length) * GAME_CONFIG.autoplay.bossRetreatStep,
+            z: position.z + (dz / length) * GAME_CONFIG.autoplay.bossRetreatStep,
+          },
+        };
+      }
+      if (context?.darknessActive)
+        return {
+          mode: "explore",
+          destination: this.darknessExplorationDestination(position),
+        };
+      return { mode: "idle" };
+    }
     const targetDistance = distance(position, target.position);
     if (targetDistance <= attackRange(player.powerType))
       return {
@@ -165,5 +269,30 @@ export class AutoplaySystem {
         monsterId: target.id,
       };
     return { mode: "hunt", destination: target.position, monsterId: target.id };
+  }
+
+  private darknessExplorationDestination(position: Vec2) {
+    const config = GAME_CONFIG.autoplay;
+    if (
+      this.explorationTarget &&
+      distance(position, this.explorationTarget) >
+        config.darknessExplorationArrivalRadius
+    )
+      return this.explorationTarget;
+
+    this.explorationAngle += Math.PI * (3 - Math.sqrt(5));
+    const limit = GAME_CONFIG.world.size / 2 - 2,
+      step = config.darknessExplorationStep;
+    this.explorationTarget = {
+      x: Math.max(
+        -limit,
+        Math.min(limit, position.x + Math.cos(this.explorationAngle) * step),
+      ),
+      z: Math.max(
+        -limit,
+        Math.min(limit, position.z + Math.sin(this.explorationAngle) * step),
+      ),
+    };
+    return this.explorationTarget;
   }
 }

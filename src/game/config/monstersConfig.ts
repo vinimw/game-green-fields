@@ -48,7 +48,7 @@ export const MONSTERS_CONFIG = {
   bear: {
     category: "boss",
     level: 10,
-    health: 3000,
+    health: 400,
     damage: 500,
     experienceReward: 400,
     coinDrop: { chance: 1, amount: 8000 },
@@ -78,7 +78,7 @@ export const MONSTERS_CONFIG = {
 } as const;
 export const MONSTER_SPAWN_CONFIG = {
   enabled: true,
-  maxMonsters: 25, //15
+  maxMonsters: 30, //15
   initialPopulationPercent: 0.45,
   minDistanceFromPlayer: 18,
   maxSpawnAttempts: 30,
@@ -119,11 +119,13 @@ export const MONSTER_SPAWN_CONFIG = {
     bat: {
       enabled: true,
       maxAlive: 12,
+      minimumAliveAfterUnlock: 6,
       respawnDelayMs: 15000,
       spawnGroupSize: 6,
-      spawnWeight: 25,
+      spawnWeight: 60,
       unlockPlayerLevel: 30,
     },
   },
+  forcedSpawnRetryMs: 2000,
   debug: { showSpawnAreas: false },
 } as const;

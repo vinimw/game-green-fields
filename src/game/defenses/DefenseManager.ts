@@ -18,6 +18,7 @@ type Projectile = {
   elapsed: number;
   duration: number;
   damage: number;
+  sourceTowerId: string;
 };
 export type DefenseTarget = {
   id: string;
@@ -72,6 +73,23 @@ export class DefenseManager {
     tower.applyLevelVisual();
     this.towers.push(tower);
     return tower;
+  }
+  remove(id: string) {
+    const index = this.towers.findIndex(
+      (tower) => tower.alive && tower.state.id === id,
+    );
+    const tower = this.towers[index];
+    if (!tower) return null;
+    const state = structuredClone(tower.state);
+    for (let projectileIndex = this.projectiles.length - 1; projectileIndex >= 0; projectileIndex--) {
+      const projectile = this.projectiles[projectileIndex];
+      if (projectile?.sourceTowerId !== id) continue;
+      projectile.root.dispose(false, true);
+      this.projectiles.splice(projectileIndex, 1);
+    }
+    tower.dispose();
+    this.towers.splice(index, 1);
+    return state;
   }
   update(dt: number, monsters: Monster[], canSeeEnemies = true) {
     for (const tower of this.towers) {
@@ -152,6 +170,7 @@ export class DefenseManager {
         Vector3.Distance(start, end) / DEFENSE_CONFIG.miniTower.projectileSpeed,
       ),
       damage: tower.attackDamage,
+      sourceTowerId: tower.state.id,
     });
   }
   private updateProjectiles(dt: number) {

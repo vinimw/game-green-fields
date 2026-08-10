@@ -40,6 +40,17 @@
   opacity: 0.42;
   cursor: not-allowed;
 }
+.tower-investment {
+  color: #aaa08e;
+}
+.tower-remove-action {
+  width: 100%;
+  margin-top: 8px;
+  border-color: #d98b7d;
+  background: linear-gradient(#7f3535, #4b2020);
+  box-shadow: 0 4px 0 #2a1111;
+  color: #ffe0d9;
+}
 .tower-upgrade-panel small {
   display: block;
   margin-top: 8px;

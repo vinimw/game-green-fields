@@ -8,6 +8,8 @@ export type TowerUpgradeView = {
   coins: number;
   currentHealth: number;
   maxHealth: number;
+  investedCoins: number;
+  removalRefund: number;
 };
 
 export class TowerUpgradePanel {
@@ -19,6 +21,7 @@ export class TowerUpgradePanel {
     private root: HTMLElement,
     private getView: (id: string) => TowerUpgradeView | null,
     private upgrade: (id: string) => string,
+    private remove: (id: string) => string,
   ) {
     this.element.className = "tower-upgrade-panel hidden";
     this.root.append(this.element);
@@ -46,7 +49,7 @@ export class TowerUpgradePanel {
     const affordable =
       !maximum && view.nextCost !== null && view.coins >= view.nextCost;
     this.element.classList.remove("hidden");
-    this.element.innerHTML = `<button class="tower-upgrade-close" aria-label="Close">×</button><h3>Mini Tower · LV ${view.level}</h3><p>HP ${view.currentHealth}/${view.maxHealth} · Damage ${view.damage.toLocaleString()}</p><p>${maximum ? "Maximum level reached" : `Next: ${view.nextDamage?.toLocaleString()} damage · ${view.nextCost?.toLocaleString()} Coins`}</p><button class="tower-upgrade-action" ${affordable ? "" : "disabled"}>${maximum ? "MAX LEVEL" : "LEVEL UP"}</button>${message ? `<small>${message}</small>` : ""}`;
+    this.element.innerHTML = `<button class="tower-upgrade-close" aria-label="Close">×</button><h3>Mini Tower · LV ${view.level}</h3><p>HP ${view.currentHealth}/${view.maxHealth} · Damage ${view.damage.toLocaleString()}</p><p>${maximum ? "Maximum level reached" : `Next: ${view.nextDamage?.toLocaleString()} damage · ${view.nextCost?.toLocaleString()} Coins`}</p><button class="tower-upgrade-action" ${affordable ? "" : "disabled"}>${maximum ? "MAX LEVEL" : "LEVEL UP"}</button><p class="tower-investment">Invested: ${view.investedCoins.toLocaleString()} Coins</p><button class="tower-remove-action">REMOVE · +${view.removalRefund.toLocaleString()} Coins</button>${message ? `<small>${message}</small>` : ""}`;
     this.element
       .querySelector(".tower-upgrade-close")
       ?.addEventListener("click", () => this.close());
@@ -57,6 +60,12 @@ export class TowerUpgradePanel {
         this.signature = "";
         const next = this.getView(view.id);
         if (next) this.render(next, result);
+      });
+    this.element
+      .querySelector(".tower-remove-action")
+      ?.addEventListener("click", () => {
+        this.remove(view.id);
+        this.close();
       });
   }
 }

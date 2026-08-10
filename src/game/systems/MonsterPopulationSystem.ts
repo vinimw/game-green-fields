@@ -14,6 +14,7 @@ type SpawnRule = {
   spawnWeight: number;
   unlockPlayerLevel?: number;
   maxPlayerLevel?: number;
+  minimumAliveAfterUnlock?: number;
 };
 type SpawnRules = Record<MonsterType, SpawnRule>;
 export const aliveCountByType = (
@@ -57,6 +58,7 @@ export class MonsterPopulationSystem {
   readonly pendingRespawns: PendingRespawn[];
   private readonly rules: SpawnRules = MONSTER_SPAWN_CONFIG.monsters;
   private playerLevel = () => 1;
+  private forcedSpawnCooldownMs = 0;
   constructor(
     private monsters: Monster[],
     private positions: SpawnPositionService,
@@ -97,6 +99,10 @@ export class MonsterPopulationSystem {
     });
   }
   update(deltaMs: number) {
+    this.forcedSpawnCooldownMs = Math.max(
+      0,
+      this.forcedSpawnCooldownMs - deltaMs,
+    );
     let retiredMonsters = 0;
     for (let index = this.monsters.length - 1; index >= 0; index--) {
       const monster = this.monsters[index];
@@ -120,6 +126,7 @@ export class MonsterPopulationSystem {
         if (!type || this.spawn(type) === 0) break;
       }
     }
+    this.ensureUnlockedMinimums();
     for (const pending of this.pendingRespawns)
       pending.remainingTimeMs -= deltaMs;
     for (let i = this.pendingRespawns.length - 1; i >= 0; i--) {
@@ -197,5 +204,22 @@ export class MonsterPopulationSystem {
       level >= (rule.unlockPlayerLevel ?? 1) &&
       level <= (rule.maxPlayerLevel ?? Number.MAX_SAFE_INTEGER)
     );
+  }
+  private ensureUnlockedMinimums() {
+    if (this.forcedSpawnCooldownMs > 0) return;
+    for (const type of Object.keys(this.rules) as MonsterType[]) {
+      const rule = this.rules[type],
+        minimum = rule.minimumAliveAfterUnlock ?? 0;
+      if (
+        minimum <= 0 ||
+        !rule.enabled ||
+        !this.isAvailableAtPlayerLevel(type) ||
+        this.aliveByType(type) >= Math.min(minimum, rule.maxAlive)
+      )
+        continue;
+      this.spawn(type);
+      this.forcedSpawnCooldownMs = MONSTER_SPAWN_CONFIG.forcedSpawnRetryMs;
+      return;
+    }
   }
 }

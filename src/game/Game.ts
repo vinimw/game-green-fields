@@ -124,6 +124,7 @@ export class Game {
       this.ui,
       (id) => this.world!.getTowerUpgradeState(id),
       (id) => this.world!.upgradeTower(id),
+      (id) => this.world!.removeTower(id),
     );
     this.world.setTowerSelectionHandler((id) =>
       id ? towerUpgrade.open(id) : towerUpgrade.close(),

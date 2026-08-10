@@ -4,6 +4,7 @@ import {
   getTowerDamage,
   getTowerMaxHealth,
   getTowerUpgradeCost,
+  getTowerTotalInvestment,
 } from "../config/defenseConfig";
 import type { DefenseState, Vec2 } from "../core/types";
 import type { DefensePlacementValidator } from "./DefensePlacementValidator";
@@ -41,6 +42,7 @@ export const purchaseTowerUpgrade = (
       level: tower.level,
       damage: getTowerDamage(tower.level),
     };
+  tower.investedCoins = getTowerTotalInvestment(tower) + cost;
   tower.level++;
   tower.currentHealth = getTowerMaxHealth(tower.level);
   return {
@@ -77,6 +79,7 @@ export const purchaseMiniTower = (
       position: { x: position.x, y: 0, z: position.z },
       rotation: 0,
       currentHealth: DEFENSE_CONFIG.miniTower.maxHealth,
+      investedCoins: cost,
     },
   };
 };

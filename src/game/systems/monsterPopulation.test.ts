@@ -69,6 +69,7 @@ const areas = [{ id: "field", minX: -10, maxX: 10, minZ: -10, maxZ: 10 }],
     bat: {
       enabled: true,
       maxAlive: 12,
+      minimumAliveAfterUnlock: 6,
       respawnDelayMs: 15000,
       spawnGroupSize: 6,
       spawnWeight: 25,
@@ -177,6 +178,24 @@ describe("horror population rules", () => {
     expect(population.spawn("bat")).toBe(0);
     population.setPlayerLevelProvider(() => 30);
     expect(population.spawn("bat")).toBe(6);
+  });
+  it("forces the first bat swarm after level thirty without waiting for a random respawn", () => {
+    const monsters = [
+        ...Array.from({ length: 4 }, () => fake("wailer")),
+        ...Array.from({ length: 7 }, () => fake("ghost")),
+      ],
+      positions = {
+        findValidSpawnPosition: () => ({ x: 7, z: -7 }),
+      } as unknown as SpawnPositionService,
+      population = new MonsterPopulationSystem(
+        monsters,
+        positions,
+        (type, position) => fake(type, true, position),
+        () => ({ x: 0, z: 0 }),
+      );
+    population.setPlayerLevelProvider(() => 30);
+    population.update(1);
+    expect(population.aliveByType("bat")).toBe(6);
   });
   it("removes level-one Crawlers and their respawns at level thirty", () => {
     const monsters = [fake("crawler")],
