@@ -35,7 +35,8 @@ type Projectile = {
   root: TransformNode;
   targetPosition: Vector3;
   spell: MageSpellType;
-  ability:MageAbilityType;
+  ability: MageAbilityType;
+  delayMs: number;
 };
 export const targetsInsideRadius = <
   T extends { position: { x: number; z: number } },
@@ -99,16 +100,56 @@ export class MageCombatSystem {
       dz = targetPosition.z - this.player.root.position.z;
     this.player.root.rotation.y = Math.atan2(dx, dz);
     this.player.playMageAttack();
-    const spell = this.player.state.selectedSpell,
-      ability=this.player.state.selectedMageAbility,
-      start = ability==="rain"?new Vector3(targetPosition.x,9,targetPosition.z):new Vector3(this.player.root.position.x,1.65,this.player.root.position.z),
-      root = ability==="rain"?this.createRainProjectile(spell):this.createProjectile(spell);
+    const spell =
+        this.player.state.selectedMageAbility === "frost-meteor"
+          ? "ice-lance"
+          : this.player.state.selectedSpell,
+      ability = this.player.state.selectedMageAbility,
+      meteor = ability === "frost-meteor",
+      start =
+        ability === "rain"
+          ? new Vector3(targetPosition.x, 9, targetPosition.z)
+          : new Vector3(
+              this.player.root.position.x,
+              1.65,
+              this.player.root.position.z,
+            ),
+      root =
+        ability === "rain"
+          ? this.createRainProjectile(spell)
+          : meteor
+            ? this.createMeteorProjectile()
+            : this.createProjectile(spell);
+    if (meteor) {
+      const config = MAGE_CONFIG.abilities["frost-meteor"];
+      root.dispose(false, true);
+      for (let index = 0; index < config.meteorCount; index++) {
+        const angle = (index / config.meteorCount) * Math.PI * 2,
+          offset = index === 0 ? 0 : 1.15,
+          impact = new Vector3(
+            targetPosition.x + Math.cos(angle) * offset,
+            1,
+            targetPosition.z + Math.sin(angle) * offset,
+          ),
+          meteorRoot = this.createMeteorProjectile();
+        meteorRoot.position.set(impact.x, 11 + index * 0.7, impact.z);
+        this.projectiles.push({
+          root: meteorRoot,
+          targetPosition: impact,
+          spell: "ice-lance",
+          ability,
+          delayMs: index * config.delayBetweenMeteorsMs,
+        });
+      }
+      return true;
+    }
     root.position.copyFrom(start);
     this.projectiles.push({
       root,
       targetPosition: new Vector3(targetPosition.x, 1, targetPosition.z),
       spell,
       ability,
+      delayMs: 0,
     });
     return true;
   }
@@ -117,6 +158,10 @@ export class MageCombatSystem {
     for (let index = this.projectiles.length - 1; index >= 0; index--) {
       const projectile = this.projectiles[index];
       if (!projectile) continue;
+      if (projectile.delayMs > 0) {
+        projectile.delayMs = Math.max(0, projectile.delayMs - dt * 1000);
+        continue;
+      }
       const delta = projectile.targetPosition.subtract(
           projectile.root.position,
         ),
@@ -144,11 +189,21 @@ export class MageCombatSystem {
           target: monster,
           position: monster.root.position,
         })),
+      baseRadius = staff.level >= 3 ? staff.aoeRadius : 0,
+      impactRadius =
+        projectile.ability === "frost-meteor"
+          ? Math.max(
+              MAGE_CONFIG.combat.singleTargetHitRadius *
+                MAGE_CONFIG.abilities["frost-meteor"].impactRadiusMultiplier,
+              baseRadius *
+                MAGE_CONFIG.abilities["frost-meteor"].impactRadiusMultiplier,
+            )
+          : baseRadius,
       candidates = resolveRangedHits(
         center,
         available,
         MAGE_CONFIG.combat.singleTargetHitRadius,
-        staff.level >= 3 ? staff.aoeRadius : 0,
+        impactRadius,
       );
     for (const monster of candidates) {
       const { critical, damage } = rollMageDamage(
@@ -156,7 +211,7 @@ export class MageCombatSystem {
           "magic",
           this.player.state.stats,
           this.player.state.staffLevel,
-        )*MAGE_CONFIG.abilities[projectile.ability].damageMultiplier,
+        ) * MAGE_CONFIG.abilities[projectile.ability].damageMultiplier,
         this.player.state.stats.agility,
       );
       this.feedback(
@@ -177,7 +232,7 @@ export class MageCombatSystem {
     this.createImpact(
       projectile.spell,
       projectile.targetPosition,
-      staff.aoeRadius,
+      impactRadius,
     );
     this.onImpact(center, candidates);
   }
@@ -210,7 +265,58 @@ export class MageCombatSystem {
     tip.material = mat;
     return root;
   }
-  private createRainProjectile(spell:MageSpellType){const root=new TransformNode(`mage-${spell}-rain`,this.scene),color=spell==="ice-lance"?"#8eefff":"#fff36a",material=new StandardMaterial(`${spell}-rain-material`,this.scene);material.diffuseColor=Color3.FromHexString(color);material.emissiveColor=Color3.FromHexString(color);for(let index=0;index<7;index++){const angle=index/7*Math.PI*2,drop=MeshBuilder.CreateCylinder(`${spell}-rain-drop`,{height:1.1,diameter:.1,tessellation:6},this.scene);drop.parent=root;drop.position.set(Math.cos(angle)*(index%2?.7:1.2),(index%3)*.45,Math.sin(angle)*(index%2?.7:1.2));drop.material=material;}return root;}
+  private createRainProjectile(spell: MageSpellType) {
+    const root = new TransformNode(`mage-${spell}-rain`, this.scene),
+      color = spell === "ice-lance" ? "#8eefff" : "#fff36a",
+      material = new StandardMaterial(`${spell}-rain-material`, this.scene);
+    material.diffuseColor = Color3.FromHexString(color);
+    material.emissiveColor = Color3.FromHexString(color);
+    for (let index = 0; index < 7; index++) {
+      const angle = (index / 7) * Math.PI * 2,
+        drop = MeshBuilder.CreateCylinder(
+          `${spell}-rain-drop`,
+          { height: 1.1, diameter: 0.1, tessellation: 6 },
+          this.scene,
+        );
+      drop.parent = root;
+      drop.position.set(
+        Math.cos(angle) * (index % 2 ? 0.7 : 1.2),
+        (index % 3) * 0.45,
+        Math.sin(angle) * (index % 2 ? 0.7 : 1.2),
+      );
+      drop.material = material;
+    }
+    return root;
+  }
+  private createMeteorProjectile() {
+    const root = new TransformNode("frost-meteor", this.scene),
+      ice = new StandardMaterial("frost-meteor-ice", this.scene),
+      core = new StandardMaterial("frost-meteor-core", this.scene);
+    ice.diffuseColor = Color3.FromHexString("#87E8FF");
+    ice.emissiveColor = Color3.FromHexString("#318EB8");
+    core.diffuseColor = Color3.FromHexString("#E8FCFF");
+    core.emissiveColor = Color3.FromHexString("#8FEFFF");
+    const body = MeshBuilder.CreatePolyhedron(
+      "frost-meteor-body",
+      { type: 1, size: 0.72 },
+      this.scene,
+    );
+    body.parent = root;
+    body.scaling.set(0.9, 1.5, 0.9);
+    body.material = ice;
+    for (let index = 0; index < 5; index++) {
+      const shard = MeshBuilder.CreatePolyhedron(
+        "frost-meteor-shard",
+        { type: 1, size: 0.22 },
+        this.scene,
+      );
+      const angle = (index / 5) * Math.PI * 2;
+      shard.parent = root;
+      shard.position.set(Math.cos(angle) * 0.62, 0.55, Math.sin(angle) * 0.62);
+      shard.material = index % 2 ? ice : core;
+    }
+    return root;
+  }
   private createImpact(
     spell: MageSpellType,
     position: Vector3,

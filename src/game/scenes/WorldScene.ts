@@ -335,7 +335,7 @@ export class WorldScene {
       () => this.player.root.position,
       () => attackRange(this.player.state.powerType),
       () => this.player.state.powerType === "magic"
-        ? (getStaff(this.player.state.staffLevel).aoeRadius || MAGE_CONFIG.combat.singleTargetHitRadius)
+        ? ((getStaff(this.player.state.staffLevel).aoeRadius || MAGE_CONFIG.combat.singleTargetHitRadius)*(this.player.state.selectedMageAbility==="frost-meteor"?MAGE_CONFIG.abilities["frost-meteor"].impactRadiusMultiplier:1))
         : GAME_CONFIG.rangedCombat.archer.hitRadius,
     );
     this.coinPickups = new CoinPickupSystem(
@@ -356,7 +356,7 @@ export class WorldScene {
       }),
       (amount) => this.hud.toast(`🥩 +${amount} Raw Beef`),
     );
-    this.skillBookPickups=new SkillBookPickupSystem(this.scene,this.player.state,()=>({x:this.player.root.position.x,z:this.player.root.position.z}),()=>this.hud.toast("📘 Rain Skill Book collected · Open backpack with M"));
+    this.skillBookPickups=new SkillBookPickupSystem(this.scene,this.player.state,()=>({x:this.player.root.position.x,z:this.player.root.position.z}),ability=>this.hud.toast(`📘 ${MAGE_CONFIG.abilities[ability].name} Skill Book collected · Open backpack with M`));
     const handleMonsterKilled = (monster: Monster) => {
       if (monster.state.type !== "bear")
         this.population.onMonsterKilled(monster.state.type);
@@ -368,7 +368,7 @@ export class WorldScene {
         x: monster.root.position.x,
         z: monster.root.position.z,
       });
-      this.skillBookPickups.tryDrop({x:monster.root.position.x,z:monster.root.position.z});
+      this.skillBookPickups.tryDrop(monster.state.type,{x:monster.root.position.x,z:monster.root.position.z});
     };
     const handleLevelUp = () => {
       this.player.playLevelUpEffect();

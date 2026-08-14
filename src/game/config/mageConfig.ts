@@ -1,14 +1,9 @@
 import { getArcherWeapon } from "./archerWeaponsConfig";
 export type MageSpellType = "ice-lance" | "lightning-lance";
-export type MageAbilityType = "lance" | "rain";
+export type MageAbilityType = "lance" | "rain" | "frost-meteor";
+export type MageSkillBookId = "rain-skill-book" | "frost-meteor-skill-book";
 export type StaffVisualStyle =
-  | "branch"
-  | "crystal"
-  | "runed"
-  | "orbital"
-  | "rift"
-  | "eclipse"
-  | "eternity";
+  "branch" | "crystal" | "runed" | "orbital" | "rift" | "eclipse" | "eternity";
 export type StaffDefinition = {
   id: string;
   name: string;
@@ -26,7 +21,7 @@ const staff = (
   aoeRadius: number,
   woodColor: string,
   crystalColor: string,
-  style: StaffVisualStyle
+  style: StaffVisualStyle,
 ): StaffDefinition => ({
   level,
   id,
@@ -46,7 +41,7 @@ export const MAGE_STAFFS: readonly StaffDefinition[] = [
     0,
     "#65472d",
     "#8fd9e8",
-    "branch"
+    "branch",
   ),
   staff(
     2,
@@ -55,7 +50,7 @@ export const MAGE_STAFFS: readonly StaffDefinition[] = [
     0,
     "#765336",
     "#55bde9",
-    "crystal"
+    "crystal",
   ),
   staff(
     3,
@@ -64,7 +59,7 @@ export const MAGE_STAFFS: readonly StaffDefinition[] = [
     1.5,
     "#3e2b24",
     "#8068e8",
-    "runed"
+    "runed",
   ),
   staff(
     4,
@@ -73,7 +68,7 @@ export const MAGE_STAFFS: readonly StaffDefinition[] = [
     1.7,
     "#533b2c",
     "#76dff2",
-    "crystal"
+    "crystal",
   ),
   staff(
     5,
@@ -82,7 +77,7 @@ export const MAGE_STAFFS: readonly StaffDefinition[] = [
     1.9,
     "#452d26",
     "#ef6b36",
-    "crystal"
+    "crystal",
   ),
   staff(
     6,
@@ -91,7 +86,7 @@ export const MAGE_STAFFS: readonly StaffDefinition[] = [
     2.1,
     "#a68f70",
     "#bdefff",
-    "orbital"
+    "orbital",
   ),
   staff(
     7,
@@ -100,7 +95,7 @@ export const MAGE_STAFFS: readonly StaffDefinition[] = [
     2.3,
     "#49372d",
     "#9b5bea",
-    "orbital"
+    "orbital",
   ),
   staff(
     8,
@@ -109,7 +104,7 @@ export const MAGE_STAFFS: readonly StaffDefinition[] = [
     2.5,
     "#211b20",
     "#713cc9",
-    "runed"
+    "runed",
   ),
   staff(
     9,
@@ -118,7 +113,7 @@ export const MAGE_STAFFS: readonly StaffDefinition[] = [
     2.7,
     "#39405c",
     "#86b5ff",
-    "orbital"
+    "orbital",
   ),
   staff(
     10,
@@ -127,7 +122,7 @@ export const MAGE_STAFFS: readonly StaffDefinition[] = [
     2.9,
     "#252039",
     "#665cff",
-    "rift"
+    "rift",
   ),
   staff(
     11,
@@ -136,7 +131,7 @@ export const MAGE_STAFFS: readonly StaffDefinition[] = [
     3.1,
     "#171720",
     "#d0a4ff",
-    "eclipse"
+    "eclipse",
   ),
   staff(
     12,
@@ -145,7 +140,7 @@ export const MAGE_STAFFS: readonly StaffDefinition[] = [
     3.3,
     "#d2b06b",
     "#72f1ff",
-    "eternity"
+    "eternity",
   ),
 ] as const;
 export const MAGE_CONFIG = {
@@ -163,6 +158,14 @@ export const MAGE_CONFIG = {
   abilities: {
     lance: { name: "Lance", damageMultiplier: 1 },
     rain: { name: "Rain", damageMultiplier: 1.15, bookId: "rain-skill-book" },
+    "frost-meteor": {
+      name: "Frost Meteor",
+      damageMultiplier: 2.5,
+      bookId: "frost-meteor-skill-book",
+      meteorCount: 3,
+      delayBetweenMeteorsMs: 220,
+      impactRadiusMultiplier: 1.6,
+    },
   },
   initialStaffLevel: 1,
   spellFeedbackMs: 850,

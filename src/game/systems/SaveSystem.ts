@@ -81,7 +81,7 @@ export class SaveSystem {
       if (typeof legacy.staffLevel !== "number") legacy.staffLevel = MAGE_CONFIG.initialStaffLevel;
       if (!Array.isArray(legacy.learnedMageAbilities)) legacy.learnedMageAbilities=[MAGE_CONFIG.initialAbility];
       if (!legacy.learnedMageAbilities.includes("lance")) legacy.learnedMageAbilities.unshift("lance");
-      if (legacy.selectedMageAbility!=="lance"&&legacy.selectedMageAbility!=="rain") legacy.selectedMageAbility=MAGE_CONFIG.initialAbility;
+      if (legacy.selectedMageAbility!=="lance"&&legacy.selectedMageAbility!=="rain"&&legacy.selectedMageAbility!=="frost-meteor") legacy.selectedMageAbility=MAGE_CONFIG.initialAbility;
       if (!legacy.learnedMageAbilities.includes(legacy.selectedMageAbility)) legacy.selectedMageAbility=MAGE_CONFIG.initialAbility;
       const player = data.player;
       player.lives = Math.max(

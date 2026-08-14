@@ -83,7 +83,7 @@ export class Hud {
       spell = MAGE_CONFIG.spells[player.selectedSpell];
     this.el.querySelector(".mage-actions")?.classList.toggle("hidden", !mage);
     this.set(".mage-spell span", spell.icon);
-    this.set(".mage-spell b", `${spell.name.split(" ")[0]} ${player.selectedMageAbility}`.toUpperCase());
+    this.set(".mage-spell b", player.selectedMageAbility==="frost-meteor"?"FROST METEOR":`${spell.name.split(" ")[0]} ${player.selectedMageAbility}`.toUpperCase());
     this.el
       .querySelector(".potion-slot")
       ?.classList.toggle("empty", player.healthPotions === 0);

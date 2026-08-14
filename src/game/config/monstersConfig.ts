@@ -1,4 +1,5 @@
-export type MonsterType = "crawler" | "wailer" | "ghost" | "bear" | "bat" | "evil-pumpkin";
+export type MonsterType =
+  "crawler" | "wailer" | "ghost" | "bear" | "bat" | "evil-pumpkin";
 export const MONSTERS_CONFIG = {
   crawler: {
     level: 1,
@@ -7,6 +8,7 @@ export const MONSTERS_CONFIG = {
     experienceReward: 12,
     coinDrop: { chance: 0.35, amount: 2 },
     meatDrop: { chance: 0, amount: 0 },
+    skillBookDrops: { rain: 0.01, frostMeteor: 0.3 },
     attackCooldownMs: 1200,
     movementSpeed: 2.4,
     detectionRadius: 8,
@@ -20,6 +22,7 @@ export const MONSTERS_CONFIG = {
     experienceReward: 25,
     coinDrop: { chance: 0.5, amount: 4 },
     meatDrop: { chance: 0, amount: 0 },
+    skillBookDrops: { rain: 0.01, frostMeteor: 0.3 },
     attackCooldownMs: 1800,
     movementSpeed: 1.15,
     detectionRadius: 12,
@@ -33,6 +36,7 @@ export const MONSTERS_CONFIG = {
     experienceReward: 50,
     coinDrop: { chance: 0.4, amount: 20 },
     meatDrop: { chance: 0, amount: 0 },
+    skillBookDrops: { rain: 0.01, frostMeteor: 0.3 },
     attackCooldownMs: 1500,
     movementSpeed: 2.5,
     detectionRadius: 18,
@@ -53,6 +57,7 @@ export const MONSTERS_CONFIG = {
     experienceReward: 400,
     coinDrop: { chance: 1, amount: 8000 },
     meatDrop: { chance: 1, amount: 10 },
+    skillBookDrops: { rain: 0.01, frostMeteor: 0.3 },
     attackCooldownMs: 2800,
     movementSpeed: 4.5,
     detectionRadius: 1000,
@@ -67,6 +72,7 @@ export const MONSTERS_CONFIG = {
     experienceReward: 20,
     coinDrop: { chance: 0.25, amount: 3 },
     meatDrop: { chance: 0.3, amount: 1 },
+    skillBookDrops: { rain: 0.01, frostMeteor: 0.3 },
     attackCooldownMs: 1100,
     movementSpeed: 4.2,
     darknessSpeedMultiplier: 2,
@@ -83,6 +89,7 @@ export const MONSTERS_CONFIG = {
     experienceReward: 50,
     coinDrop: { chance: 0.3, amount: 25 },
     meatDrop: { chance: 0, amount: 0 },
+    skillBookDrops: { rain: 0.01, frostMeteor: 0.3 },
     attackCooldownMs: 2200,
     movementSpeed: 3.2,
     detectionRadius: 17,
