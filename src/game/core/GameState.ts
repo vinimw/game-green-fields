@@ -2,6 +2,7 @@ import { GAME_CONFIG } from "../config/gameConfig";
 import type { PlayerState, PowerType } from "./types";
 import { initialStatPoints, maxHealth } from "../systems/StatsSystem";
 import { getStaff, MAGE_CONFIG } from "../config/mageConfig";
+import {INITIAL_ARCHER_ABILITY} from "../config/archerAbilitiesConfig";
 export const createPlayerState = (
   powerType: PowerType = GAME_CONFIG.player.initialPowerType,
 ): PlayerState => {
@@ -26,6 +27,8 @@ export const createPlayerState = (
     staffLevel: MAGE_CONFIG.initialStaffLevel,
     learnedMageAbilities: [MAGE_CONFIG.initialAbility],
     selectedMageAbility: MAGE_CONFIG.initialAbility,
+    learnedArcherAbilities:[INITIAL_ARCHER_ABILITY],
+    selectedArcherAbility:INITIAL_ARCHER_ABILITY,
     currentHealth: maxHealth(stats.vitality, GAME_CONFIG.player.initialLevel),
     stats,
     availableStatPoints: initialStatPoints(GAME_CONFIG.player.initialLevel),

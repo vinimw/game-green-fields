@@ -1,6 +1,7 @@
 import type { MonsterType } from "../config/monstersConfig";
 import type { DefenseType } from "../config/defenseConfig";
 import type { MageAbilityType, MageSpellType } from "../config/mageConfig";
+import type {ArcherAbilityType} from "../config/archerAbilitiesConfig";
 export type Vec2 = { x: number; z: number };
 export type Stats = {
   strength: number;
@@ -35,6 +36,8 @@ export type PlayerState = {
   staffLevel: number;
   learnedMageAbilities: MageAbilityType[];
   selectedMageAbility: MageAbilityType;
+  learnedArcherAbilities:ArcherAbilityType[];
+  selectedArcherAbility:ArcherAbilityType;
   currentHealth: number;
   stats: Stats;
   availableStatPoints: number;

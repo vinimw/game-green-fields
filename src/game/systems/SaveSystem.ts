@@ -10,6 +10,7 @@ import {
 import { MONSTERS_CONFIG, type MonsterType } from "../config/monstersConfig";
 import type { PlayerState, SaveData } from "../core/types";
 import { getStaff, MAGE_CONFIG, MAGE_STAFFS } from "../config/mageConfig";
+import {INITIAL_ARCHER_ABILITY} from "../config/archerAbilitiesConfig";
 
 type LegacyPlayer = Partial<PlayerState> & { gold?: number };
 type LegacyMonster = { type: string; health: number };
@@ -83,6 +84,10 @@ export class SaveSystem {
       if (!legacy.learnedMageAbilities.includes("lance")) legacy.learnedMageAbilities.unshift("lance");
       if (legacy.selectedMageAbility!=="lance"&&legacy.selectedMageAbility!=="rain"&&legacy.selectedMageAbility!=="frost-meteor") legacy.selectedMageAbility=MAGE_CONFIG.initialAbility;
       if (!legacy.learnedMageAbilities.includes(legacy.selectedMageAbility)) legacy.selectedMageAbility=MAGE_CONFIG.initialAbility;
+      if(!Array.isArray(legacy.learnedArcherAbilities))legacy.learnedArcherAbilities=[INITIAL_ARCHER_ABILITY];
+      if(!legacy.learnedArcherAbilities.includes("single-arrow"))legacy.learnedArcherAbilities.unshift("single-arrow");
+      if(legacy.selectedArcherAbility!=="single-arrow"&&legacy.selectedArcherAbility!=="arrow-rain"&&legacy.selectedArcherAbility!=="ricochet-arrow")legacy.selectedArcherAbility=INITIAL_ARCHER_ABILITY;
+      if(!legacy.learnedArcherAbilities.includes(legacy.selectedArcherAbility))legacy.selectedArcherAbility=INITIAL_ARCHER_ABILITY;
       const player = data.player;
       player.lives = Math.max(
         0,

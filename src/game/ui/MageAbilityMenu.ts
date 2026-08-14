@@ -1,16 +1,32 @@
+import {
+  ARCHER_ABILITIES,
+  type ArcherAbilityType,
+} from "../config/archerAbilitiesConfig";
 import { MAGE_CONFIG, type MageAbilityType } from "../config/mageConfig";
 import type { PlayerState } from "../core/types";
+import {
+  learnArcherAbility,
+  selectArcherAbility,
+} from "../systems/ArcherAbilitySystem";
 import {
   learnMageAbility,
   selectMageAbility,
 } from "../systems/MageAbilitySystem";
 import { powerDamage } from "../systems/StatsSystem";
-
-const unlockable = ["rain", "frost-meteor"] as const;
+type LearnableMage = Exclude<MageAbilityType, "lance">;
+type LearnableArcher = Exclude<ArcherAbilityType, "single-arrow">;
+const mageBooks: [LearnableMage, string, string][] = [
+    ["rain", "📘", "Livro da Chuva"],
+    ["frost-meteor", "🧊", "Livro Meteoro de Gelo"],
+  ],
+  archerBooks: [LearnableArcher, string, string][] = [
+    ["arrow-rain", "🏹", "Livro Chuva de Flechas"],
+    ["ricochet-arrow", "↗️", "Livro Flecha Ricochete"],
+  ];
 export class MageAbilityMenu {
   private el: HTMLElement;
   private mode: "backpack" | "abilities" = "backpack";
-  private selectedBook?: (typeof unlockable)[number];
+  private selected?: MageAbilityType | ArcherAbilityType;
   private keyHandler: (event: KeyboardEvent) => void;
   constructor(
     root: HTMLElement,
@@ -22,7 +38,11 @@ export class MageAbilityMenu {
     this.el.className = "overlay hidden mage-inventory-overlay";
     root.append(this.el);
     this.keyHandler = (event) => {
-      if (event.repeat || this.player.powerType !== "magic") return;
+      if (
+        event.repeat ||
+        (player.powerType !== "magic" && player.powerType !== "archer")
+      )
+        return;
       if (event.code === "KeyM") {
         event.preventDefault();
         this.toggle("backpack");
@@ -31,7 +51,7 @@ export class MageAbilityMenu {
         event.preventDefault();
         this.toggle("abilities");
       }
-      if (event.code === "Escape" && this.isOpen()) this.close();
+      if (event.code === "Escape" && this.open()) this.close();
     };
     addEventListener("keydown", this.keyHandler);
   }
@@ -39,11 +59,15 @@ export class MageAbilityMenu {
     removeEventListener("keydown", this.keyHandler);
     this.el.remove();
   }
-  private isOpen() {
+  private open() {
     return !this.el.classList.contains("hidden");
   }
+  private close() {
+    this.el.classList.add("hidden");
+    this.pause(false);
+  }
   private toggle(mode: "backpack" | "abilities") {
-    if (this.isOpen() && this.mode === mode) {
+    if (this.open() && this.mode === mode) {
       this.close();
       return;
     }
@@ -52,74 +76,152 @@ export class MageAbilityMenu {
     this.pause(true);
     this.render();
   }
-  private close() {
-    this.el.classList.add("hidden");
-    this.pause(false);
-  }
-  private damage(ability: MageAbilityType) {
-    return Math.round(
-      powerDamage("magic", this.player.stats, this.player.staffLevel) *
-        MAGE_CONFIG.abilities[ability].damageMultiplier,
-    );
-  }
-  private bookCard(ability: (typeof unlockable)[number]) {
-    const config = MAGE_CONFIG.abilities[ability],
-      owned = this.player.inventory.includes(config.bookId);
-    if (!owned) return "";
-    return `<button class="skill-book ${this.selectedBook === ability ? "selected" : ""}" data-book="${ability}"><span>${ability === "rain" ? "📘" : "🧊"}</span><b>${ability === "rain" ? "Livro da Chuva" : "Livro Meteoro de Gelo"}</b><small>Habilidade para Mago</small></button>`;
-  }
-  private description(ability: (typeof unlockable)[number], element: string) {
-    if (ability === "rain")
-      return `<h2>Chuva de ${element}</h2><p>Uma chuva de ${element}.</p><p><b>+15% de poder de ataque</b></p>`;
-    return `<h2>Meteoro de Gelo</h2><p>Invoca 3 meteoros de gelo em sequência em locais diferentes próximos da mira.</p><p><b>2.5× de poder · área de impacto ampliada</b></p>`;
-  }
   private render() {
-    const element = this.player.selectedSpell === "ice-lance" ? "gelo" : "raio",
-      ownedBooks = unlockable.map((value) => this.bookCard(value)).join(""),
-      selected = this.selectedBook,
-      learnedRain = this.player.learnedMageAbilities.includes("rain"),
-      learnedMeteor = this.player.learnedMageAbilities.includes("frost-meteor");
-    if (this.mode === "backpack")
-      this.el.innerHTML = `<div class="panel modal-panel mage-inventory"><button class="modal-close" data-close>×</button><h1>Mochila</h1><nav class="inventory-tabs"><button class="active">Habilidades</button></nav><div class="book-grid">${ownedBooks || '<p class="empty">Nenhum livro de habilidade na mochila.</p>'}</div>${selected && this.player.inventory.includes(MAGE_CONFIG.abilities[selected].bookId) ? `<section class="skill-description">${this.description(selected, element)}<button data-learn="${selected}">Aprender</button></section>` : ""}${learnedRain || learnedMeteor ? '<p class="learned-note">Pressione I para escolher uma habilidade aprendida.</p>' : ""}</div>`;
-    else
-      this.el.innerHTML = `<div class="panel modal-panel mage-inventory"><button class="modal-close" data-close>×</button><h1>Habilidades aprendidas</h1><p>Selecione qual forma de ataque será usada.</p><div class="ability-list">${this.abilityButton("lance", `Lança de ${element}`)}${learnedRain ? this.abilityButton("rain", `Chuva de ${element}`) : ""}${learnedMeteor ? this.abilityButton("frost-meteor", "Meteoro de Gelo") : ""}</div></div>`;
-    this.bind();
+    if (this.player.powerType === "archer") this.renderArcher();
+    else this.renderMage();
   }
-  private bind() {
+  private shell(content: string) {
+    this.el.innerHTML = `<div class="panel modal-panel mage-inventory"><button class="modal-close" data-close>×</button>${content}</div>`;
     this.el
       .querySelector("[data-close]")
       ?.addEventListener("click", () => this.close());
-    this.el.querySelectorAll<HTMLElement>("[data-book]").forEach(
+  }
+  private renderArcher() {
+    const learned = this.player.learnedArcherAbilities;
+    if (this.mode === "backpack") {
+      const cards = archerBooks
+          .filter(([ability]) =>
+            this.player.inventory.includes(ARCHER_ABILITIES[ability].bookId),
+          )
+          .map(
+            ([ability, icon, label]) =>
+              `<button class="skill-book ${this.selected === ability ? "selected" : ""}" data-archer-book="${ability}"><span>${icon}</span><b>${label}</b></button>`,
+          )
+          .join(""),
+        selected = this.selected as LearnableArcher | undefined,
+        description =
+          selected &&
+          this.player.inventory.includes(ARCHER_ABILITIES[selected].bookId)
+            ? `<section class="skill-description">${selected === "arrow-rain" ? "<h2>Chuva de Flechas</h2><p>Atinge uma grande área com 2.10× de dano.</p>" : "<h2>Flecha Ricochete</h2><p>Acerta o alvo inicial e rebate rapidamente em até 3 adversários próximos.</p><p><b>3.5× de dano · alcance máximo 6</b></p>"}<button data-learn-archer="${selected}">Aprender</button></section>`
+            : "";
+      this.shell(
+        `<h1>Mochila</h1><nav class="inventory-tabs"><button class="active">Habilidades</button></nav><div class="book-grid">${cards || '<p class="empty">Nenhum livro de habilidade na mochila.</p>'}</div>${description}`,
+      );
+      this.el.querySelectorAll<HTMLElement>("[data-archer-book]").forEach(
+        (button) =>
+          (button.onclick = () => {
+            this.selected = button.dataset.archerBook as LearnableArcher;
+            this.render();
+          }),
+      );
+      this.el
+        .querySelector<HTMLElement>("[data-learn-archer]")
+        ?.addEventListener("click", (event) => {
+          const ability = (event.currentTarget as HTMLElement).dataset
+            .learnArcher as LearnableArcher;
+          if (learnArcherAbility(this.player, ability))
+            this.toast(`🏹 ${ARCHER_ABILITIES[ability].name} aprendida!`);
+          this.selected = undefined;
+          this.render();
+        });
+      return;
+    }
+    const damage = (ability: ArcherAbilityType) =>
+        Math.round(
+          powerDamage(
+            "archer",
+            this.player.stats,
+            this.player.archerWeaponLevel,
+          ) * ARCHER_ABILITIES[ability].damageMultiplier,
+        ),
+      cards = (Object.keys(ARCHER_ABILITIES) as ArcherAbilityType[])
+        .filter((ability) => learned.includes(ability))
+        .map(
+          (ability) =>
+            `<button class="ability-card ${this.player.selectedArcherAbility === ability ? "selected" : ""}" data-archer-ability="${ability}"><b>🏹 ${ARCHER_ABILITIES[ability].name}</b><span>Dano ${damage(ability)}</span><small>${ability === "arrow-rain" ? "2.10× · grande área" : ability === "ricochet-arrow" ? "3.5× · 3 ricochetes" : "Ataque padrão"}</small></button>`,
+        )
+        .join("");
+    this.shell(
+      `<h1>Habilidades aprendidas</h1><div class="ability-list">${cards}</div>`,
+    );
+    this.el.querySelectorAll<HTMLElement>("[data-archer-ability]").forEach(
       (button) =>
         (button.onclick = () => {
-          this.selectedBook = button.dataset
-            .book as (typeof unlockable)[number];
-          this.render();
+          const ability = button.dataset.archerAbility as ArcherAbilityType;
+          if (selectArcherAbility(this.player, ability)) {
+            this.toast(`${ARCHER_ABILITIES[ability].name} equipada`);
+            this.render();
+          }
         }),
     );
-    this.el
-      .querySelector<HTMLElement>("[data-learn]")
-      ?.addEventListener("click", (event) => {
-        const ability = (event.currentTarget as HTMLElement).dataset
-          .learn as (typeof unlockable)[number];
-        if (learnMageAbility(this.player, ability))
-          this.toast(`✨ ${MAGE_CONFIG.abilities[ability].name} aprendida!`);
-        this.selectedBook = undefined;
-        this.render();
-      });
-    this.el.querySelectorAll<HTMLElement>("[data-ability]").forEach(
+  }
+  private renderMage() {
+    const learned = this.player.learnedMageAbilities,
+      element = this.player.selectedSpell === "ice-lance" ? "gelo" : "raio";
+    if (this.mode === "backpack") {
+      const cards = mageBooks
+          .filter(([ability]) =>
+            this.player.inventory.includes(
+              MAGE_CONFIG.abilities[ability].bookId,
+            ),
+          )
+          .map(
+            ([ability, icon, label]) =>
+              `<button class="skill-book ${this.selected === ability ? "selected" : ""}" data-mage-book="${ability}"><span>${icon}</span><b>${label}</b></button>`,
+          )
+          .join(""),
+        selected = this.selected as LearnableMage | undefined,
+        description =
+          selected &&
+          this.player.inventory.includes(MAGE_CONFIG.abilities[selected].bookId)
+            ? `<section class="skill-description">${selected === "rain" ? `<h2>Chuva de ${element}</h2><p>Uma chuva de ${element}. +15% de poder.</p>` : "<h2>Meteoro de Gelo</h2><p>Três meteoros sequenciais. 2.5× de poder e área ampliada.</p>"}<button data-learn-mage="${selected}">Aprender</button></section>`
+            : "";
+      this.shell(
+        `<h1>Mochila</h1><div class="book-grid">${cards || '<p class="empty">Nenhum livro de habilidade na mochila.</p>'}</div>${description}`,
+      );
+      this.el.querySelectorAll<HTMLElement>("[data-mage-book]").forEach(
+        (button) =>
+          (button.onclick = () => {
+            this.selected = button.dataset.mageBook as LearnableMage;
+            this.render();
+          }),
+      );
+      this.el
+        .querySelector<HTMLElement>("[data-learn-mage]")
+        ?.addEventListener("click", (event) => {
+          const ability = (event.currentTarget as HTMLElement).dataset
+            .learnMage as LearnableMage;
+          if (learnMageAbility(this.player, ability))
+            this.toast(`✨ ${MAGE_CONFIG.abilities[ability].name} aprendida!`);
+          this.selected = undefined;
+          this.render();
+        });
+      return;
+    }
+    const damage = (ability: MageAbilityType) =>
+        Math.round(
+          powerDamage("magic", this.player.stats, this.player.staffLevel) *
+            MAGE_CONFIG.abilities[ability].damageMultiplier,
+        ),
+      cards = (Object.keys(MAGE_CONFIG.abilities) as MageAbilityType[])
+        .filter((ability) => learned.includes(ability))
+        .map(
+          (ability) =>
+            `<button class="ability-card ${this.player.selectedMageAbility === ability ? "selected" : ""}" data-mage-ability="${ability}"><b>✨ ${MAGE_CONFIG.abilities[ability].name}</b><span>Dano ${damage(ability)}</span></button>`,
+        )
+        .join("");
+    this.shell(
+      `<h1>Habilidades aprendidas</h1><div class="ability-list">${cards}</div>`,
+    );
+    this.el.querySelectorAll<HTMLElement>("[data-mage-ability]").forEach(
       (button) =>
         (button.onclick = () => {
-          const ability = button.dataset.ability as MageAbilityType;
+          const ability = button.dataset.mageAbility as MageAbilityType;
           if (selectMageAbility(this.player, ability)) {
             this.toast(`${MAGE_CONFIG.abilities[ability].name} equipada`);
             this.render();
           }
         }),
     );
-  }
-  private abilityButton(ability: MageAbilityType, name: string) {
-    const multiplier = MAGE_CONFIG.abilities[ability].damageMultiplier;
-    return `<button class="ability-card ${this.player.selectedMageAbility === ability ? "selected" : ""}" data-ability="${ability}"><b>${ability === "rain" ? "🌧️" : ability === "frost-meteor" ? "☄️" : "✨"} ${name}</b><span>Dano ${this.damage(ability)}</span><small>${multiplier === 1 ? "Ataque padrão" : `${multiplier}× de poder`}</small></button>`;
   }
 }
